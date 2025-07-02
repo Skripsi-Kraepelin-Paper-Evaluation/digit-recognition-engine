@@ -1,9 +1,11 @@
 from flask import Blueprint, jsonify, request
 import os
 import re
+import concurrent.futures
 from models import predicted_digit_answer as answer
 from models import predicted_digit_question as question
 import numpy as np
+import psutil
 
 # Singleton for inference engine
 class InferenceEngine:
@@ -51,13 +53,12 @@ class EvalHandler:
         if not os.path.exists(path):
             return []
 
-        results = []
         images = [f for f in os.listdir(path) if f.endswith('.png')]
 
-        for image in images:
+        def process_single_image(image):
             match = re.match(r'row(\d+)col(\d+)\.png', image)
             if not match:
-                continue
+                return None
 
             row, col = map(int, match.groups())
             image_path = os.path.join(path, image)
@@ -68,10 +69,19 @@ class EvalHandler:
                     kernel_size=3,
                     iterations=1
                 )
-                obj = self._create_obj(predicted_digit, accuracy, row, col, blank, is_question)
-                results.append(obj)
+                return self._create_obj(predicted_digit, accuracy, row, col, blank, is_question)
             except Exception as e:
                 print(f"Error processing {image_path}: {e}")
+                return None
+
+        results = []
+        max_workers = calculate_optimal_workers()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(process_single_image, image) for image in images]
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                if result is not None:
+                    results.append(result)
 
         return results
 
@@ -107,3 +117,26 @@ def create_eval_blueprint(inference_engine):
             return jsonify({"error": f"Processing failed: {str(e)}"}), 500
 
     return eval_bp
+
+def calculate_optimal_workers():
+    """Calculate optimal number of workers based on system resources"""
+    cpu_count = os.cpu_count()
+    memory_gb = psutil.virtual_memory().total / (1024**3)
+    
+    # Conservative estimates for CNN memory usage
+    # Adjust these based on your specific model size
+    estimated_model_memory_gb = 0.5  # Typical small CNN model
+    max_memory_workers = int(memory_gb * 0.7 / estimated_model_memory_gb)  # Use 70% of RAM
+    
+    # CPU-based calculation
+    cpu_workers = max(1, cpu_count - 1)  # Leave one core free
+    
+    # Take the minimum to avoid resource exhaustion
+    optimal_workers = min(cpu_workers, max_memory_workers, 8)  # Cap at 8 for stability
+    
+    print(f"System specs:")
+    print(f"  CPU cores: {cpu_count}")
+    print(f"  RAM: {memory_gb:.1f} GB")
+    print(f"  Calculated optimal workers: {optimal_workers}")
+    
+    return optimal_workers
