@@ -7,7 +7,7 @@ from scipy import ndimage
 from skimage import filters
 
 class NewDigitsRecogModel:
-    def __init__(self, model_path):
+    def __init__(self, model_path,min_threshold_zero=50):
         """
         Initialize the inference class with a trained model
 
@@ -15,6 +15,7 @@ class NewDigitsRecogModel:
             model_path (str): Path to the saved model directory
         """
         self.model = tf.keras.models.load_model(model_path)
+        self.min_threshold_zero = min_threshold_zero
         print(f"Model loaded from {model_path}")
 
     def gaussian_blur_thickening(self, image, sigma=1.2, threshold=80):
@@ -61,9 +62,7 @@ class NewDigitsRecogModel:
         
         is_blank = False
 
-        print(f'NON ZERO {non_zero}')
-
-        if non_zero < 50: 
+        if non_zero < self.min_threshold_zero: 
             is_blank = True
             return None, is_blank
 

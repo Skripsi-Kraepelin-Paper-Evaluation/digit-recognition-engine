@@ -10,8 +10,8 @@ credit to : https://www.kaggle.com/models/pauljohannesaru/beyond_mnist
 
 ## STRUKTUR KODE
 
-### views
-merepresentasikan kode terkait halaman user interface dari system
+### dataservices
+merepresentasikan kode terkait abstraksi pengelolaan dan pengambilan data
 
 ### controllers
 merepresentasikan kode logic / function business process dari system
@@ -21,3 +21,10 @@ merepresentasikan abstraksi objek / entitas untuk mempermudah abstraksi system
 
 ### engines
 merepresentasikan mesin utama dari system seperti inference engine, preprocessing, dan region of interest
+
+### persistent
+direktori aset business process disimpan, seperti upload documents, rekam jejak evaluasi, dan gambar hasil teknik region of interest
+
+## DISCLAIMER
+
+this code is built with monolithic architecture in mind
