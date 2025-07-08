@@ -8,6 +8,7 @@ def run_prediction(image_path='./test_image/0.png', row=0, column=0):
 
     try:
         digit, confidence, blank = inferencer.predict_digit(
+            True,
             image_path,
             kernel_size=3,
             iterations=1,

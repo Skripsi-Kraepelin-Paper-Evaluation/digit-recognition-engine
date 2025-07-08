@@ -1,0 +1,121 @@
+{
+  "filename": "samsul",
+  "evaluation_results": {
+    "0": {
+      "0": {
+        "is_correct": false,
+        "column": 0,
+        "row": 0
+      },
+      "1": {
+        "is_correct": false,
+        "column": 0,
+        "row": 1
+      },
+      "2": {
+        "is_correct": false,
+        "column": 0,
+        "row": 2
+      }
+    },
+    "1": {
+      "0": {
+        "is_correct": false,
+        "column": 1,
+        "row": 0
+      },
+      "1": {
+        "is_correct": false,
+        "column": 1,
+        "row": 1
+      },
+      "2": {
+        "is_correct": true,
+        "column": 1,
+        "row": 2
+      }
+    },
+    "2": {
+      "0": {
+        "is_correct": true,
+        "column": 2,
+        "row": 0
+      },
+      "1": {
+        "is_correct": false,
+        "column": 2,
+        "row": 1
+      },
+      "2": {
+        "is_correct": false,
+        "column": 2,
+        "row": 2
+      }
+    },
+    "3": {
+      "0": {
+        "is_correct": false,
+        "column": 3,
+        "row": 0
+      },
+      "1": {
+        "is_correct": false,
+        "column": 3,
+        "row": 1
+      },
+      "2": {
+        "is_correct": false,
+        "column": 3,
+        "row": 2
+      }
+    }
+  },
+  "overall_statistics": {
+    "total_evaluated": 12,
+    "total_correct": 2,
+    "total_incorrect": 10,
+    "accuracy_percentage": 16.67
+  },
+  "column_statistics": {
+    "0": {
+      "total": 3,
+      "correct": 0,
+      "incorrect": 3,
+      "accuracy_percentage": 0.0
+    },
+    "1": {
+      "total": 3,
+      "correct": 1,
+      "incorrect": 2,
+      "accuracy_percentage": 33.33
+    },
+    "2": {
+      "total": 3,
+      "correct": 1,
+      "incorrect": 2,
+      "accuracy_percentage": 33.33
+    },
+    "3": {
+      "total": 3,
+      "correct": 0,
+      "incorrect": 3,
+      "accuracy_percentage": 0.0
+    }
+  },
+  "kraepelin_metrics": {
+    "panker": 2.0,
+    "janker": 0.6667,
+    "hanker": 0.0,
+    "tianker": 0.0,
+    "column_performance": [
+      0,
+      1,
+      1,
+      0
+    ],
+    "performance_trend": "stable"
+  },
+  "total_questions": 16,
+  "total_answers": 12,
+  "evaluation_timestamp": "1751989063.9404998"
+}

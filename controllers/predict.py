@@ -6,6 +6,8 @@ from models import predicted_digit_answer as answer
 from models import predicted_digit_question as question
 import numpy as np
 import psutil
+import json
+from configs import config
 
 # Singleton for inference engine
 class InferenceEngine:
@@ -19,12 +21,13 @@ class InferenceEngine:
     def set_engine(self, engine):
         self._engine = engine
 
-    def predict_digit(self, image_path, kernel_size=3, iterations=1):
-        return self._engine.predict_digit(image_path=image_path, kernel_size=kernel_size, iterations=iterations)
+    def predict_digit(self, is_answer,image_path, kernel_size=3, iterations=1):
+        return self._engine.predict_digit(is_answer=is_answer,image_path=image_path, kernel_size=kernel_size, iterations=iterations)
 
-class EvalHandler:
-    def __init__(self):
+class PredictHandler:
+    def __init__(self, persistent_path='./persistent'):
         self.engine = InferenceEngine()
+        self.persistent_path = persistent_path
 
     def _create_obj(self, predicted_digit, accuracy, row, col, blank, is_question):
         model_class = question.PredictedDigitQuestion if is_question else answer.PredictedDigitAnswer
@@ -65,6 +68,7 @@ class EvalHandler:
 
             try:
                 predicted_digit, accuracy, blank = self.engine.predict_digit(
+                    is_answer=not is_question,
                     image_path=image_path,
                     kernel_size=3,
                     iterations=1
@@ -85,12 +89,13 @@ class EvalHandler:
 
         return results
 
-    def handle_eval(self, filename):
-        base_path = f'./persistent/roi_result/{filename}'
+    def handle_predict(self, filename):
+        base_path = f'{self.persistent_path}/roi_result/{filename}'
         questions = self.process_images(os.path.join(base_path, 'questions'), is_question=True)
         answers = self.process_images(os.path.join(base_path, 'answers'), is_question=False)
 
-        return {
+
+        result = {
             'filename': filename,
             'questions': [self._serialize_obj(q) for q in questions],
             'answers': [self._serialize_obj(a) for a in answers],
@@ -98,25 +103,44 @@ class EvalHandler:
             'total_answers': len(answers)
         }
 
-def create_eval_blueprint(inference_engine):
-    InferenceEngine().set_engine(inference_engine)
-    eval_handler = EvalHandler()
-    eval_bp = Blueprint('eval_controller', __name__)
+        ## save result as json to ./persistent/preview_history/{filename.json} so that it can be opened again
 
-    @eval_bp.route('/eval', methods=['POST'])
-    def eval():
+        preview_dir = f'{self.persistent_path}/preview_history'
+        os.makedirs(preview_dir, exist_ok=True)
+        
+        # Save result as JSON file
+        json_filename = f'{filename}.json'
+        json_path = os.path.join(preview_dir, json_filename)
+        
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
+        
+        # Add the saved path to the result for reference
+        result['saved_path'] = json_path
+
+        #####################################
+
+        return result
+
+def create_predict_blueprint(inference_engine,cfg):
+    InferenceEngine().set_engine(inference_engine)
+    predict_handler = PredictHandler(persistent_path=cfg.persistent_path)
+    predict_bp = Blueprint('predict_controller', __name__)
+
+    @predict_bp.route('/predict', methods=['POST'])
+    def predict():
         try:
             data = request.get_json()
             filename = data.get('filename')
             if not filename:
                 return jsonify({"error": "Missing filename"}), 400
 
-            result = eval_handler.handle_eval(filename)
+            result = predict_handler.handle_predict(filename)
             return jsonify(result), 200
         except Exception as e:
             return jsonify({"error": f"Processing failed: {str(e)}"}), 500
 
-    return eval_bp
+    return predict_bp
 
 def calculate_optimal_workers():
     """Calculate optimal number of workers based on system resources"""

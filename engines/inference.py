@@ -7,7 +7,7 @@ from scipy import ndimage
 from skimage import filters
 
 class NewDigitsRecogModel:
-    def __init__(self, model_path,min_threshold_zero=50):
+    def __init__(self, model_path,threshold_question=1000,threshold_answer=800):
         """
         Initialize the inference class with a trained model
 
@@ -15,7 +15,8 @@ class NewDigitsRecogModel:
             model_path (str): Path to the saved model directory
         """
         self.model = tf.keras.models.load_model(model_path)
-        self.min_threshold_zero = min_threshold_zero
+        self.threshold_question = threshold_question
+        self.threshold_answer = threshold_answer
         print(f"Model loaded from {model_path}")
 
     def gaussian_blur_thickening(self, image, sigma=1.2, threshold=80):
@@ -42,7 +43,7 @@ class NewDigitsRecogModel:
 
         return thickened
 
-    def preprocess_image(self, image_path, **enhancement_kwargs):
+    def preprocess_image(self, is_answer,image_path, **enhancement_kwargs):
         """
         Preprocess PNG image to match MNIST training format with improved line thickness enhancement
 
@@ -56,15 +57,25 @@ class NewDigitsRecogModel:
 
         # Blank image detection
         imgcv = cv2.imread(image_path)
+        imgcv = cv2.resize(imgcv, (28, 28))
         gray = cv2.cvtColor(imgcv, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY_INV)  # Invert: digits become white
         non_zero = cv2.countNonZero(thresh)
         
         is_blank = False
 
-        if non_zero < self.min_threshold_zero: 
-            is_blank = True
-            return None, is_blank
+        
+        if is_answer:
+            if non_zero < self.threshold_answer: 
+                print(f'imagepath {image_path} non_zero {non_zero} min threshold {self.threshold_answer}')
+                is_blank = True
+                return None, is_blank
+        else:
+            if non_zero < self.threshold_question: 
+                print(f'imagepath {image_path} non_zero {non_zero} min threshold {self.threshold_question}')
+                is_blank = True
+                return None, is_blank
+        
 
         # Load the image
         img = Image.open(image_path)
@@ -110,7 +121,7 @@ class NewDigitsRecogModel:
 
         return final_array, is_blank
 
-    def predict_digit(self, image_path, **enhancement_kwargs):
+    def predict_digit(self, is_answer ,image_path, **enhancement_kwargs):
         """
         Predict digit from PNG image with line thickness enhancement
 
@@ -124,6 +135,7 @@ class NewDigitsRecogModel:
         """
         # Preprocess the image with enhancement
         processed_img, is_blank = self.preprocess_image(
+            is_answer,
             image_path,
             **enhancement_kwargs
         )
