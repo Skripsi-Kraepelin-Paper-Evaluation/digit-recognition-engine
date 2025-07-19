@@ -1,0 +1,129 @@
+import fitz  # PyMuPDF
+from PIL import Image
+import os
+
+def crop_pdf_to_images(pdf_path, output_dir="cropped_images", dpi=400):
+    """
+    Memotong PDF menjadi gambar-gambar kecil berdasarkan koordinat yang ditentukan.
+    
+    Parameters:
+    pdf_path (str): Path ke file PDF
+    output_dir (str): Direktori output untuk menyimpan gambar
+    dpi (int): Resolusi gambar output (default: 300 DPI)
+    
+    Returns:
+    int: Jumlah gambar yang berhasil dipotong
+    """
+    
+    # Koordinat awal
+    start_x = 15
+    start_y = 19
+    
+    # Ukuran area pemotongan
+    width = 19  # 42 - 12 = 30
+    height = 14  # 33.5 - 17.5 = 16
+    
+    # Increment untuk setiap baris dan kolom
+    x_increment = 19
+    y_increment = 14
+    
+    # Jumlah baris dan kolom
+    rows = 55
+    cols = 40
+    
+    # Buat direktori output jika belum ada
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    # Buka PDF
+    try:
+        pdf_document = fitz.open(pdf_path)
+    except Exception as e:
+        print(f"Error membuka PDF: {e}")
+        return 0
+    
+    # Ambil halaman pertama (bisa dimodifikasi untuk halaman lain)
+    page = pdf_document[0]
+    
+    # Konversi halaman ke gambar dengan DPI yang ditentukan
+    matrix = fitz.Matrix(dpi/72, dpi/72)  # 72 DPI adalah default PDF
+    pix = page.get_pixmap(matrix=matrix)
+    
+    # Konversi ke PIL Image menggunakan metode yang lebih kompatibel
+    img_data = pix.pil_tobytes(format="PNG")
+    from io import BytesIO
+    full_image = Image.open(BytesIO(img_data))
+    
+    # Faktor skala untuk koordinat (karena koordinat PDF berbeda dengan koordinat pixel)
+    scale_factor = dpi / 72
+    
+    cropped_count = 0
+    
+    print(f"Memulai pemotongan PDF menjadi {rows}x{cols} = {rows*cols} gambar...")
+    
+    # Loop untuk setiap baris dan kolom
+    for row in range(rows):
+        for col in range(cols):
+            # Hitung koordinat untuk crop ini
+            x1 = (start_x + (col * x_increment)) * scale_factor
+            # Untuk sistem koordinat bottom-left, row 0 dimulai dari bawah
+            # Jadi kita perlu membalik urutan row
+            y1 = (start_y + ((rows - 1 - row) * y_increment)) * scale_factor
+            x2 = x1 + (width * scale_factor)
+            y2 = y1 + (height * scale_factor)
+            
+            # Pastikan koordinat tidak melebihi batas gambar
+            if x2 <= full_image.width and y2 <= full_image.height:
+                # Crop gambar
+                cropped_img = full_image.crop((int(x1), int(y1), int(x2), int(y2)))
+                
+                # Simpan dengan nama file sesuai format
+                filename = f"row{row}col{col}.png"
+                filepath = os.path.join(output_dir, filename)
+                cropped_img.save(filepath)
+                
+                cropped_count += 1
+                
+                # Progress indicator
+                if (cropped_count % 100) == 0:
+                    print(f"Progress: {cropped_count}/{rows*cols} gambar telah dipotong...")
+            else:
+                print(f"Warning: Koordinat row{row}col{col} melebihi batas gambar, dilewati.")
+    
+    # Tutup dokumen PDF
+    pdf_document.close()
+    
+    print(f"Selesai! {cropped_count} gambar berhasil disimpan di direktori '{output_dir}'")
+    return cropped_count
+
+# Contoh penggunaan
+if __name__ == "__main__":
+    # Ganti dengan path ke file PDF Anda
+    pdf_file = "input.pdf"
+    output_directory = "hasil_potong"
+    
+    # Pastikan file PDF ada
+    if os.path.exists(pdf_file):
+        total_images = crop_pdf_to_images(pdf_file, output_directory, dpi=400)
+        print(f"Total gambar yang dihasilkan: {total_images}")
+    else:
+        print(f"File PDF '{pdf_file}' tidak ditemukan!")
+        print("Silakan ganti variabel 'pdf_file' dengan path yang benar ke file PDF Anda.")
+
+# Fungsi tambahan untuk memeriksa dimensi PDF
+def check_pdf_dimensions(pdf_path):
+    """
+    Memeriksa dimensi halaman PDF untuk membantu menentukan koordinat yang tepat.
+    """
+    try:
+        pdf_document = fitz.open(pdf_path)
+        page = pdf_document[0]
+        rect = page.rect
+        print(f"Dimensi halaman PDF: {rect.width} x {rect.height} points")
+        print(f"Dalam milimeter (approx): {rect.width * 0.352778:.1f} x {rect.height * 0.352778:.1f} mm")
+        pdf_document.close()
+    except Exception as e:
+        print(f"Error memeriksa dimensi PDF: {e}")
+
+# Uncomment baris di bawah untuk memeriksa dimensi PDF
+# check_pdf_dimensions("input.pdf")

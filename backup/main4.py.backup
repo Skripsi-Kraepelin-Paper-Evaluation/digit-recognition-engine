@@ -1,0 +1,241 @@
+import fitz  # PyMuPDF
+import cv2
+import numpy as np
+import os
+from PIL import Image, ImageDraw, ImageFont
+
+def pdf_to_png(pdf_path, output_path="output.png", dpi=400):
+    """
+    Konversi PDF ke PNG dengan DPI tinggi
+    
+    Parameters:
+    pdf_path: Path ke file PDF
+    output_path: Path output PNG
+    dpi: Resolusi output (default 400 untuk kualitas tinggi)
+    
+    Returns:
+    tuple: (width, height) dari image yang dihasilkan
+    """
+    try:
+        # Buka PDF
+        pdf_document = fitz.open(pdf_path)
+        page = pdf_document[0]  # Ambil halaman pertama
+        
+        # Hitung matrix untuk DPI yang diinginkan
+        # Default PyMuPDF = 72 DPI
+        zoom = dpi / 72.0
+        mat = fitz.Matrix(zoom, zoom)
+        
+        # Render ke pixmap
+        pix = page.get_pixmap(matrix=mat)
+        
+        # Simpan sebagai PNG
+        pix.save(output_path)
+        
+        width, height = pix.width, pix.height
+        pdf_document.close()
+        
+        print(f"PDF berhasil dikonversi ke PNG:")
+        print(f"  Input: {pdf_path}")
+        print(f"  Output: {output_path}")
+        print(f"  Resolusi: {width}x{height} pixels ({dpi} DPI)")
+        
+        return width, height
+        
+    except Exception as e:
+        print(f"Error konversi PDF ke PNG: {e}")
+        return None, None
+
+def cartesian_to_image_coordinates(x, y, image_height):
+    """
+    Konversi koordinat Kartesian ke koordinat image
+    
+    Kartesian: (0,0) di kiri bawah, Y naik ke atas
+    Image: (0,0) di kiri atas, Y naik ke bawah
+    
+    Parameters:
+    x, y: koordinat Kartesian
+    image_height: tinggi image
+    
+    Returns:
+    tuple: (x_img, y_img) koordinat image
+    """
+    x_img = x
+    y_img = image_height - y  # Flip koordinat Y
+    return int(x_img), int(y_img)
+
+def crop_cartesian_grid_from_png(image_path, output_folder="cropped_cells", 
+                                 start_x=12, start_y=17, 
+                                 width=24, height=14,
+                                 x_increment=29.5, y_increment=15,
+                                 rows=55, cols=40,
+                                 dpi_scale=1.0):
+    """
+    Crop gambar berdasarkan grid Kartesian dan simpan sebagai file terpisah
+    
+    Parameters:
+    image_path: Path ke file PNG
+    output_folder: Folder untuk menyimpan hasil crop
+    start_x, start_y: Titik mulai grid dalam koordinat Kartesian
+    width, height: Ukuran setiap cell
+    x_increment, y_increment: Jarak antar cell
+    rows, cols: Jumlah baris dan kolom
+    dpi_scale: Faktor skala untuk menyesuaikan dengan DPI
+    
+    Returns:
+    int: Jumlah file yang berhasil di-crop
+    """
+    try:
+        # Baca image
+        image = cv2.imread(image_path)
+        if image is None:
+            print(f"Error: Tidak bisa membaca image {image_path}")
+            return 0
+            
+        image_height, image_width = image.shape[:2]
+        print(f"Ukuran image: {image_width}x{image_height} pixels")
+        
+        # Buat folder output jika belum ada
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+            print(f"Folder '{output_folder}' dibuat")
+        
+        print(f"Mulai crop grid {rows}x{cols} dengan koordinat Kartesian...")
+        print(f"DPI scale factor: {dpi_scale}")
+        print(f"Start position: ({start_x}, {start_y})")
+        print(f"Output folder: {output_folder}")
+        
+        count = 0
+        
+        # Scale koordinat sesuai DPI
+        scaled_start_x = start_x * dpi_scale
+        scaled_start_y = start_y * dpi_scale
+        scaled_width = width * dpi_scale
+        scaled_height = height * dpi_scale
+        scaled_x_inc = x_increment * dpi_scale
+        scaled_y_inc = y_increment * dpi_scale
+        
+        for row in range(rows):
+            for col in range(cols):
+                # Koordinat Kartesian (belum di-scale)
+                cart_x1 = start_x + (col * x_increment)
+                cart_y1 = start_y + (row * y_increment)  # Row 0 = bawah
+                cart_x2 = cart_x1 + width
+                cart_y2 = cart_y1 + height
+                
+                # Koordinat Kartesian yang sudah di-scale
+                scaled_cart_x1 = scaled_start_x + (col * scaled_x_inc)
+                scaled_cart_y1 = scaled_start_y + (row * scaled_y_inc)
+                scaled_cart_x2 = scaled_cart_x1 + scaled_width
+                scaled_cart_y2 = scaled_cart_y1 + scaled_height
+                
+                # Konversi ke koordinat image
+                img_x1, img_y1 = cartesian_to_image_coordinates(scaled_cart_x1, scaled_cart_y2, image_height)
+                img_x2, img_y2 = cartesian_to_image_coordinates(scaled_cart_x2, scaled_cart_y1, image_height)
+                
+                # Debug untuk beberapa cell pertama
+                if count < 3:
+                    print(f"Cell r{row}c{col}:")
+                    print(f"  Cartesian: ({cart_x1:.1f},{cart_y1:.1f}) to ({cart_x2:.1f},{cart_y2:.1f})")
+                    print(f"  Image: ({img_x1},{img_y1}) to ({img_x2},{img_y2})")
+                
+                # Pastikan koordinat dalam batas image dan valid
+                if (0 <= img_x1 < image_width and 0 <= img_y1 < image_height and
+                    0 <= img_x2 < image_width and 0 <= img_y2 < image_height and
+                    img_x1 < img_x2 and img_y1 < img_y2):
+                    
+                    # Crop gambar
+                    # OpenCV menggunakan [y1:y2, x1:x2] untuk slicing
+                    cropped_image = image[img_y1:img_y2, img_x1:img_x2]
+                    
+                    # Buat nama file: rowXcolY.png
+                    filename = f"row{row}col{col}.png"
+                    filepath = os.path.join(output_folder, filename)
+                    
+                    # Simpan cropped image
+                    success = cv2.imwrite(filepath, cropped_image)
+                    
+                    if success:
+                        count += 1
+                        
+                        # Debug info untuk beberapa file pertama
+                        if count <= 5:
+                            crop_height, crop_width = cropped_image.shape[:2]
+                            print(f"  Saved: {filename} ({crop_width}x{crop_height} pixels)")
+                    else:
+                        print(f"  Error saving: {filename}")
+                
+                else:
+                    # Cell di luar batas image
+                    if count < 5:  # Debug info
+                        print(f"Cell r{row}c{col}: Diluar batas image")
+            
+            # Progress setiap 10 baris
+            if (row + 1) % 10 == 0:
+                print(f"Progress: {row + 1}/{rows} baris selesai, {count} file tersimpan")
+        
+        print(f"\nSelesai! Total {count} file ter-crop disimpan di folder '{output_folder}'")
+        return count
+        
+    except Exception as e:
+        print(f"Error crop gambar: {e}")
+        return 0
+
+def pdf_to_png_with_cartesian_crop(pdf_path, png_output="converted.png", 
+                                   crop_folder="cropped_cells", dpi=400):
+    """
+    Pipeline lengkap: PDF -> PNG -> Crop Grid Kartesian
+    """
+    print("=" * 60)
+    print("PDF TO PNG WITH CARTESIAN CROP")
+    print("=" * 60)
+    
+    # Step 1: Konversi PDF ke PNG
+    print("\nStep 1: Konversi PDF ke PNG...")
+    width, height = pdf_to_png(pdf_path, png_output, dpi)
+    
+    if width is None or height is None:
+        print("Gagal konversi PDF ke PNG")
+        return False
+    
+    # Step 2: Crop grid Kartesian
+    print(f"\nStep 2: Crop grid Kartesian...")
+    
+    # Hitung scale factor berdasarkan DPI
+    dpi_scale = dpi / 72.0
+    
+    count = crop_cartesian_grid_from_png(
+        png_output, 
+        crop_folder,
+        start_x=12,           # Koordinat awal X
+        start_y=17,           # Koordinat awal Y  
+        width=24,             # Lebar cell
+        height=14,            # Tinggi cell
+        x_increment=29.5,     # Jarak X antar cell
+        y_increment=15,       # Jarak Y antar cell
+        rows=55,              # Jumlah baris
+        cols=40,              # Jumlah kolom
+        dpi_scale=dpi_scale
+    )
+
+# Contoh penggunaan
+if __name__ == "__main__":
+    
+    # Ganti dengan path file PDF Anda
+    input_pdf = "input.pdf"
+    
+    if os.path.exists(input_pdf):
+        # Pipeline lengkap
+        pdf_to_png_with_cartesian_crop(
+            input_pdf,
+            png_output="converted_image.png",
+            crop_folder="cropped_cells", 
+            dpi=400  # DPI tinggi untuk kualitas bagus
+        )
+            
+    else:
+        print(f"\n❌ File PDF '{input_pdf}' tidak ditemukan!")
+        print("Ganti variabel 'input_pdf' dengan path yang benar.")
+        print("\nContoh penggunaan terpisah:")
+        print("1. pdf_to_png('file.pdf', 'output.png', dpi=400)")
+        print("2. crop_cartesian_grid_from_png('output.png', 'cropped_cells', dpi_scale=5.56)")
