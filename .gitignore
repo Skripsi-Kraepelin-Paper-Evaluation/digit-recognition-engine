@@ -209,3 +209,4 @@ __marimo__/
 bin
 lib
 lib64
+persistent

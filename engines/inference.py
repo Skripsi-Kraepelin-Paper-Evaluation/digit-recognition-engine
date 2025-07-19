@@ -7,7 +7,7 @@ from scipy import ndimage
 from skimage import filters
 
 class NewDigitsRecogModel:
-    def __init__(self, model_path,threshold_question=1000,threshold_answer=800):
+    def __init__(self, model_path,threshold_answer=800):
         """
         Initialize the inference class with a trained model
 
@@ -15,7 +15,6 @@ class NewDigitsRecogModel:
             model_path (str): Path to the saved model directory
         """
         self.model = tf.keras.models.load_model(model_path)
-        self.threshold_question = threshold_question
         self.threshold_answer = threshold_answer
         print(f"Model loaded from {model_path}")
 
@@ -68,11 +67,6 @@ class NewDigitsRecogModel:
         if is_answer:
             if non_zero < self.threshold_answer: 
                 print(f'imagepath {image_path} non_zero {non_zero} min threshold {self.threshold_answer}')
-                is_blank = True
-                return None, is_blank
-        else:
-            if non_zero < self.threshold_question: 
-                print(f'imagepath {image_path} non_zero {non_zero} min threshold {self.threshold_question}')
                 is_blank = True
                 return None, is_blank
         

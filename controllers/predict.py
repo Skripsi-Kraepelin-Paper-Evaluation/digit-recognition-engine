@@ -3,7 +3,6 @@ import os
 import re
 import concurrent.futures
 from models import predicted_digit_answer as answer
-from models import predicted_digit_question as question
 import numpy as np
 import psutil
 import json
@@ -136,6 +135,7 @@ class PredictHandler:
             [6,5,3,3,9,4,8,2,2,8,9,6,8,7,2,9,5,6,7,3,8,6,2,5,9,7,5,7,9,8,4,2,4,1,4,8,2,2,3,9,7,7,5,6,8,9,9,3,6,2,5,2,8,8,4,5]            
         ]
         answers = self.process_images(os.path.join(base_path, 'answers'), is_question=False)
+        answers_sorted = sorted(answers, key=lambda x: (x.column, x.row))
 
         # sort answers by first column, first rows
 
@@ -143,9 +143,9 @@ class PredictHandler:
         result = {
             'filename': filename,
             'questions': questions_fixed,
-            'answers': [self._serialize_obj(a) for a in answers],
-            'total_questions': len(questions),
-            'total_answers': len(answers)
+            'answers': [self._serialize_obj(a) for a in answers_sorted],
+            'total_questions': len(questions_fixed),
+            'total_answers': len(answers_sorted)
         }
 
         ## save result as json to ./persistent/preview_history/{filename.json} so that it can be opened again
