@@ -1,6 +1,6 @@
 from configs import config
 from flask import Flask
-from controllers import predict, preview_history, list_files_uploaded, eval_history, upload_and_roi
+from controllers import predict, preview_history, list_files_uploaded, eval_history, upload_and_roi,eval
 from engines import inference
 
 
@@ -21,6 +21,7 @@ def create_app():
     app.register_blueprint(list_files_uploaded.create_list_uploaded_blueprint(cfg))
     app.register_blueprint(eval_history.create_eval_history_blueprint(cfg))
     app.register_blueprint(upload_and_roi.create_upload_roi_blueprint(cfg))
+    app.register_blueprint(eval.create_eval_blueprint(cfg))
 
     return app
 
