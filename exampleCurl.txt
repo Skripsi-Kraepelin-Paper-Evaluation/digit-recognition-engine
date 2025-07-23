@@ -1,0 +1,61 @@
+# example request eval
+curl -X "POST" -d @payloadEval.json -H 'Content-Type: application/json' "http://localhost:5000/eval"
+
+# example eval response
+{
+  "accuracy": "0",
+  "colScorePerMinute": "110.000",
+  "hanker": "y = 55.000 + 0.000x",
+  "janker": "0",
+  "jankerv2": "0.000",
+  "panker": "55.000",
+  "tianker": "0",
+  "totalCorrectAns": "2200",
+  "": "localhost:8080/public/persistent/eval_history/plots/samsul.png"
+}
+
+# example request eval history
+curl -X "GET" -H 'Content-Type: application/json' "http://localhost:5000/eval_history/samsul"
+
+# example eval history response
+{
+  "accuracy": "0",
+  "colScorePerMinute": "110.000",
+  "hanker": "y = 55.000 + 0.000x",
+  "janker": "0",
+  "jankerv2": "0.000",
+  "loaded_at": 1753109232.22711,
+  "loaded_from": "./persistent/eval_history/samsul.json",
+  "panker": "55.000",
+  "tianker": "0",
+  "totalCorrectAns": "2200",
+  "plotImagePath": "localhost:8080/public/persistent/eval_history/plots/samsul.png"
+}
+
+# example request list all uploaded files
+curl -X "GET" -H 'Content-Type: application/json' "http://localhost:5000/list_uploaded"
+
+# example list all uploaded files response
+{
+  "files": [
+    "samsul"
+  ],
+  "success": true,
+  "total_files": 1
+}
+
+
+# example upload and roi
+curl -X "POST" -F "file=@samsul.pdf" -H 'Content-Type: application/pdf' "http://localhost:5000/upload_roi/samsul"
+
+# example upload and roi response
+{
+  "message": true
+}
+
+
+# example request preview history
+curl -X "GET" -H 'Content-Type: application/json' "http://localhost:5000/preview_history/samsul"
+
+# example request predict
+curl -X "POST" -d '{"filename":"samsul"}' -H 'Content-Type: application/json' "http://localhost:5000/predict"

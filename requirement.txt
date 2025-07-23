@@ -1,0 +1,9 @@
+opencv-python
+psutil
+flask
+scikit-image
+numpy
+pandas
+PyMuPDF
+pillow
+flask-cors

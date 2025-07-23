@@ -48,7 +48,8 @@ class EvalHandler:
                 "hanker": f"{report['hanker']['equation']}",
                 "accuracy": f"{report['accuracy']}",
                 "colScorePerMinute": f"{report['column_score_per_minute']:.3f}",
-                "totalCorrectAns": f"{report['summary']['total_correct_answers']}"
+                "totalCorrectAns": f"{report['summary']['total_correct_answers']}",
+                "plotImagePath":f"{filename}.pdf"
             }
 
             os.makedirs(preview_dir, exist_ok=True)

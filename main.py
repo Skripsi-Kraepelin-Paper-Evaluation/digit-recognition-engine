@@ -2,10 +2,13 @@ from configs import config
 from flask import Flask
 from controllers import predict, preview_history, list_files_uploaded, eval_history, upload_and_roi,eval
 from engines import inference
+from flask_cors import CORS
+
 
 
 def create_app():
     app = Flask(__name__)
+    CORS(app)
 
     cfg = config.AppConfig()
 
