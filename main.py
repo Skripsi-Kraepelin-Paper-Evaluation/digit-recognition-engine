@@ -7,10 +7,10 @@ from flask_cors import CORS
 
 
 def create_app():
-    app = Flask(__name__)
+    cfg = config.AppConfig()
+    app = Flask(__name__, static_url_path='/public/persistent',static_folder=cfg.persistent_path)
     CORS(app)
 
-    cfg = config.AppConfig()
 
     # init inference engine
     inferencer = inference.NewDigitsRecogModel('./output_model/model0.h5',threshold_answer=cfg.threshold_answer)
