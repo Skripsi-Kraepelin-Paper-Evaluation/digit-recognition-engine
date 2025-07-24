@@ -6,8 +6,9 @@ import os
 import json
 
 class EvalHandler:
-    def __init__(self, persistent_path='./persistent'):
+    def __init__(self, persistent_path='./persistent',host='http://localhost:5000'):
         self.persistent_path = persistent_path
+        self.host
 
     def handle_eval(self):
         preview_dir = f'{self.persistent_path}/eval_history'
@@ -49,7 +50,7 @@ class EvalHandler:
                 "accuracy": f"{report['accuracy']}",
                 "colScorePerMinute": f"{report['column_score_per_minute']:.3f}",
                 "totalCorrectAns": f"{report['summary']['total_correct_answers']}",
-                "plotImagePath":f"{filename}.pdf"
+                "plotImagePath":f"{self.host}/{filename}.pdf"
             }
 
             os.makedirs(preview_dir, exist_ok=True)
@@ -67,7 +68,7 @@ class EvalHandler:
             raise Exception(f"Error processing request: {str(e)}")
 
 def create_eval_blueprint(cfg):
-    eval_handler = EvalHandler(persistent_path=cfg.persistent_path)
+    eval_handler = EvalHandler(persistent_path=cfg.persistent_path,host=cfg.host)
     eval_bp = Blueprint('eval', __name__)
 
     @eval_bp.route('/eval', methods=['POST'])

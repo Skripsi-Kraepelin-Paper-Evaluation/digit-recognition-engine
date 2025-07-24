@@ -7,3 +7,4 @@ class AppConfig:
         self.persistent_path = os.getenv("PERSISTENT_PATH") or './persistent'
         self.row = os.getenv("ROW") or 4
         self.col = os.getenv("COLUMN") or 4
+        self.host = os.getenv("COLUMN") or "http://localhost:5000"
