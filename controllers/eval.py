@@ -36,7 +36,7 @@ class EvalHandler:
                 raise ValueError("questionArrays and answerArrays must be lists")
 
             analyzer = KraepelinAnalyzer(question_arrays=question_arrays, answer_arrays=answer_arrays,persistent_path=self.persistent_path)
-            analyzer.plot_total_correct_answers(filename=filename)
+            analyzer.plot_total_correct_answers(filename=filename,save_path=None)
 
             # Generate full report
             report = analyzer.generate_full_report()
@@ -50,7 +50,7 @@ class EvalHandler:
                 "accuracy": f"{report['accuracy']}",
                 "colScorePerMinute": f"{report['column_score_per_minute']:.3f}",
                 "totalCorrectAns": f"{report['summary']['total_correct_answers']}",
-                "plotImagePath":f"{self.host}/{filename}.pdf"
+                "plotImagePath":f"{self.host}/public/persistent/eval_history/plots/{filename}.png"
             }
 
             os.makedirs(preview_dir, exist_ok=True)
@@ -82,7 +82,7 @@ def create_eval_blueprint(cfg):
     return eval_bp
 
 class KraepelinAnalyzer:
-    def __init__(self, question_arrays: List[List[int]], answer_arrays: List[List], persistent_path):
+    def __init__(self, question_arrays: List[List[int]], answer_arrays: List[List], persistent_path='./persistent'):
         """
         Initialize Kraepelin test analyzer
 
@@ -109,15 +109,8 @@ class KraepelinAnalyzer:
 
             processed_column = []
             for i in range(len(question_array) - 1):
-                # Ensure we're working with integers
-                try:
-                    num1 = int(question_array[i])
-                    num2 = int(question_array[i + 1])
-                    result = (num1 + num2) % 10
-                    processed_column.append(result)
-                except (ValueError, TypeError):
-                    # Skip invalid entries
-                    continue
+                result = (question_array[i] + question_array[i + 1])%10
+                processed_column.append(result)
             processed.append(processed_column)
 
         return processed
@@ -130,7 +123,7 @@ class KraepelinAnalyzer:
             Dict containing correct, errors, and skipped counts
         """
         if column_idx >= len(self.processed_questions) or column_idx >= len(self.answer_arrays):
-            return {"correct": 0, "errors": 0, "skipped": 0, "total_answered": 0, "not_answered": 0}
+            return {"correct": 0, "errors": 0, "skipped": 0, "total_answered": 0}
 
         processed_q = self.processed_questions[column_idx]
         answers = self.answer_arrays[column_idx]
@@ -147,25 +140,18 @@ class KraepelinAnalyzer:
             answer = answers[i]
             expected = processed_q[i]
 
-            # Handle different types of empty/null values
-            if answer == '' or answer is None or str(answer).strip() == '':
+            if answer == 'SKIPPED' or answer is None:
                 skipped += 1
             elif str(answer).lower() == 'x':
                 errors += 1
-            elif str(answer).lower() == 'n/a':
+            elif answer != expected:
+                errors += 1
+            elif answer == expected:
+                correct += 1
+            elif answer == 'BLANK':
                 not_answered += 1
             else:
-                try:
-                    # Convert answer to int for comparison
-                    answer_int = int(answer)
-                    if answer_int == expected:
-                        correct += 1
-                    else:
-                        errors += 1
-                except (ValueError, TypeError):
-                    # If answer can't be converted to int, treat as error
-                    errors += 1
-
+                not_answered += 1
         total_answered = max_items - skipped
 
         return {
@@ -173,7 +159,7 @@ class KraepelinAnalyzer:
             "errors": errors,
             "skipped": skipped,
             "total_answered": total_answered,
-            "not_answered": not_answered
+            "not_answered" : not_answered
         }
 
     def calculate_panker(self) -> float:
@@ -363,16 +349,9 @@ class KraepelinAnalyzer:
         self.results["column_analysis"] = analysis
         return analysis
 
-    def plot_total_correct_answers(self, save_path: str = None, filename: str = None):
+    def plot_total_correct_answers(self,filename,save_path):
         """
-        Create and save a graph of total correct answers per column
-        
-        Args:
-            save_path: Directory path where to save the plot
-            filename: Base filename (without extension) for the plot file
-        
-        Returns:
-            str: Path to the saved plot file
+        Create a graph of total correct answers per column
         """
         column_correct = self.get_total_correct_per_column()
         column_numbers = list(range(1, len(column_correct) + 1))
@@ -394,8 +373,6 @@ class KraepelinAnalyzer:
             plt.legend()
 
         plt.tight_layout()
-        
-        # Generate filename and save path
         if not filename:
             filename = "kraepelin_plot"
         
