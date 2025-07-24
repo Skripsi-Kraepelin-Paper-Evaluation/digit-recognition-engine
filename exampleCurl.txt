@@ -11,7 +11,7 @@ curl -X "POST" -d @payloadEval.json -H 'Content-Type: application/json' "http://
   "panker": "55.000",
   "tianker": "0",
   "totalCorrectAns": "2200",
-  "": "localhost:8080/public/persistent/eval_history/plots/samsul.png"
+  "plotImagePath": "localhost:8080/public/persistent/eval_history/plots/samsul.png"
 }
 
 # example request eval history

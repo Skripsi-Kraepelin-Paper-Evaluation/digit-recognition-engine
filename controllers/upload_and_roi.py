@@ -158,7 +158,7 @@ class PDFGridCropper:
                 'height': 78,
                 'x_increment': 165,
                 'y_increment': -78,
-                'rows': 58,
+                'rows': 55,
                 'cols': 45
             }
             
@@ -213,7 +213,7 @@ class UploadAndRoIHandler:
             'height': 78,
             'x_increment': 165,
             'y_increment': -78,
-            'rows': 56,
+            'rows': 55,
             'cols': 40
         }
         
