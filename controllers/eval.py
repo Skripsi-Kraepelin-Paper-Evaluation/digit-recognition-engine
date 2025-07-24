@@ -8,7 +8,7 @@ import json
 class EvalHandler:
     def __init__(self, persistent_path='./persistent',host='http://localhost:5000'):
         self.persistent_path = persistent_path
-        self.host
+        self.host = host
 
     def handle_eval(self):
         preview_dir = f'{self.persistent_path}/eval_history'
