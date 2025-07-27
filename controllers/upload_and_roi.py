@@ -167,17 +167,27 @@ class PDFGridCropper:
 
             saved_files = []
             img_h, img_w = image.shape[:2]
+            
 
-            x1_coord = []
-
-            x2_coord = []
+            ##TODO REPLACE THIS WITH DYNAMIC COORDINATE
+            data = [
+                (65, 160), (230, 340), (395, 520), (560, 665), (730, 830),
+                (900, 1000), (1050, 1170), (1220, 1320), (1385, 1485),
+                (1550, 1650), (1720, 1820), (1880, 1990), (2050, 2150),
+                (2210, 2320), (2375, 2480), (2545, 2654), (2705, 2820),
+                (2870, 2985), (3030, 3150), (3195, 3315), (3360, 3470),
+                (3530, 3640), (3690, 3800), (3850, 3965), (4020, 4130),
+                (4175, 4290), (4340, 4460), (4505, 4625), (4670, 4785),
+                (4840, 4950), (5000, 5110), (5165, 5285), (5330, 5450),
+                (5495, 5610), (5660, 5780), (5825, 5940), (5990, 6100),
+                (6150, 6270), (6320, 6440), (6480, 6600)
+            ]
 
             # Process each column
             for col_idx in range(cols):
                 try:
                     # Calculate column coordinates
-                    x1 = x1_coord[col_idx]
-                    x2 = x2_coord[col_idx]
+                    x1, x2 = data[col_idx]
                     
                     # Validate coordinates
                     if x1 < 0 or x2 > img_w or y1 < 0 or y2 > img_h:
@@ -187,7 +197,7 @@ class PDFGridCropper:
                     # Crop answers columns
                     answers_columns = image[y1:y2, x1:x2]
 
-                    cv2.imwrite(f"{col_idx}RAW.png", answers_columns)
+                    ## UNCOMMENT TO DEBUG cv2.imwrite(f"{col_idx}RAW.png", answers_columns)
                     
                     if answers_columns.size == 0:
                         print(f"Column {col_idx}: empty crop, skipping")
@@ -323,7 +333,7 @@ class PDFGridCropper:
             pdf_path: Input PDF file path
             output_dir: Directory for cropped images
             png_temp: Temporary PNG file path
-            grid_config: Grid configuration dictionary
+            grid_config: Grid cox1, x2 in datanfiguration dictionary
             
         Returns:
             True if successful, False otherwise
