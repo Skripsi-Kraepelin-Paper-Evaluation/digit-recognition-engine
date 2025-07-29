@@ -59,3 +59,47 @@ curl -X "GET" -H 'Content-Type: application/json' "http://localhost:5000/preview
 
 # example request predict
 curl -X "POST" -d '{"filename":"samsul"}' -H 'Content-Type: application/json' "http://localhost:5000/predict"
+
+
+# example request upload
+
+export PDF_FILE="example.pdf" \
+export BASE_URL="http://localhost:5000" \ 
+export FILENAME="example" \
+export OCCUPACY_AND_ROLE="Software Engineer" \
+export LAST_EDU="S1"  \
+export POB="Jakarta"  \
+export DOB="1990-01-15" \
+export NAME="Patrick Star" \
+export TESTDATE = "2020-01-15"
+
+curl -X POST \
+  -F "file=@${PDF_FILE}" \
+  -F "occupacyAndRole=${OCCUPACY_AND_ROLE}" \
+  -F "lastEdu=${LAST_EDU}" \
+  -F "pob=${POB}" \
+  -F "dob=${DOB}" \
+  -F "name=${NAME}" \
+  -F "testDate=${TESTDATE}" \
+  "${BASE_URL}/upload_roi/${FILENAME}" \
+  -v
+
+
+# example delete request
+
+curl -X DELETE "http://localhost:5000/example" -H "Content-Type: application/json" -v
+
+# example request metadata
+curl -X "GET" -H 'Content-Type: application/json' "http://localhost:5000/metadata/example"
+
+# example response metadata
+{
+  "dob": "2025-07-29",
+  "lastEdu": "D1",
+  "loaded_at": 1753803291.0866067,
+  "loaded_from": "./persistent/metadata/Patrick_Star_2025-07-29.json",
+  "name": "Patrick Star",
+  "occupacyAndRole": "Software Developer",
+  "pob": "Bandung",
+  "testDate": "2025-07-16"
+}

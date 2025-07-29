@@ -243,86 +243,6 @@ class PDFGridCropper:
             traceback.print_exc()
             return 0
             
-    # def crop_grid_cells(self, image_path: str, output_dir: str = "crops",
-    #                start_x: float = 62.5, start_y: float = 4565,
-    #                width: float = 132.5, height: float = 78,
-    #                x_increment: float = 165.2, y_increment: float = 78,
-    #                rows: int = 56, cols: int = 40) -> int:
-    #     """
-    #     Crop grid cells from image with top-left origin coordinate system (matching grid drawing).
-        
-    #     Args:
-    #         image_path: Path to input image
-    #         output_dir: Directory to save cropped images
-    #         start_x, start_y: Starting position (top-left origin, same as grid drawing)
-    #         width, height: Cell dimensions
-    #         x_increment, y_increment: Cell spacing
-    #         rows, cols: Grid dimensions
-            
-    #     Returns:
-    #         Number of successfully cropped cells
-    #     """
-    #     try:
-    #         # Load image
-    #         image = cv2.imread(image_path)
-    #         if image is None:
-    #             logger.error(f"Cannot read image: {image_path}")
-    #             return 0
-                
-    #         image_height, image_width = image.shape[:2]
-            
-    #         # Create output directory
-    #         os.makedirs(output_dir, exist_ok=True)
-            
-    #         logger.info(f"Starting grid cropping: {rows}x{cols} cells")
-    #         logger.info(f"Start position: ({start_x}, {start_y}) pixels")
-    #         logger.info(f"Cell size: {width} x {height} pixels")
-    #         logger.info(f"Increment: {x_increment} x {y_increment} pixels")
-            
-    #         successful_crops = 0
-            
-    #         for row in range(rows):
-    #             for col in range(cols):
-    #                 # Calculate coordinates using top-left origin (same as grid drawing)
-    #                 img_x1 = int(start_x + (col * x_increment))
-    #                 img_y1 = int(start_y + (row * y_increment))  # Row 0 = top
-    #                 img_x2 = int(img_x1 + width)
-    #                 img_y2 = int(img_y1 + height)
-                    
-    #                 # Debug for first few cells
-    #                 if successful_crops < 3:
-    #                     logger.info(f"Cell row{row}col{col}: ({img_x1},{img_y1}) to ({img_x2},{img_y2})")
-                    
-    #                 # Validate bounds
-    #                 if (0 <= img_x1 < image_width and 0 <= img_y1 < image_height and
-    #                     0 <= img_x2 <= image_width and 0 <= img_y2 <= image_height and
-    #                     img_x1 < img_x2 and img_y1 < img_y2):
-                        
-    #                     # Crop cell
-    #                     cell_image = image[img_y1:img_y2, img_x1:img_x2]
-                        
-    #                     # Save with naming convention: row{Y}col{X}.png
-    #                     filename = f"row{row}col{col}.png"
-    #                     output_path = os.path.join(output_dir, filename)
-                        
-    #                     cv2.imwrite(output_path, cell_image)
-    #                     successful_crops += 1
-                        
-    #                 else:
-    #                     if successful_crops < 10:  # Only log first few out-of-bounds
-    #                         logger.warning(f"Cell row{row}col{col} out of bounds: ({img_x1},{img_y1}) to ({img_x2},{img_y2})")
-                            
-    #             # Progress reporting
-    #             if (row + 1) % 10 == 0:
-    #                 logger.info(f"Progress: {row + 1}/{rows} rows completed, {successful_crops} cells cropped")
-                            
-    #         logger.info(f"Grid cropping completed: {successful_crops}/{rows*cols} cells saved to '{output_dir}'")
-    #         return successful_crops
-            
-    #     except Exception as e:
-    #         logger.error(f"Grid cropping failed: {e}")
-    #         return 0
-            
     def process_pdf(self, pdf_path: str, output_dir: str = "crops",
                    png_temp: str = "temp_converted.png",
                    grid_config: dict = None) -> bool:
@@ -379,7 +299,7 @@ class UploadAndRoIHandler:
     def __init__(self, persistent_path='./persistent'):
         self.persistent_path = persistent_path
 
-    def handle_upload_roi(self, filename):
+    def handle_upload_roi(self, filename, additional_data):
 
         input_pdf = f"{self.persistent_path}/uploaded/{filename}.pdf"
         output_directory = f"{self.persistent_path}/roi_result/{filename}/answers"
@@ -408,6 +328,15 @@ class UploadAndRoIHandler:
             grid_config=grid_settings
         )
 
+        # Save additional data as JSON metadata
+        if additional_data:
+            metadata_dir = f"{self.persistent_path}/metadata"
+            os.makedirs(metadata_dir, exist_ok=True)
+            
+            metadata_path = f"{metadata_dir}/{filename}.json"
+            with open(metadata_path, 'w', encoding='utf-8') as f:
+                json.dump(additional_data, f, ensure_ascii=False, indent=2)
+
         return {
             "message":success
         }
@@ -422,27 +351,50 @@ def create_upload_roi_blueprint(cfg):
     def upload_roi(filename):
         try:
             # Check if request has file data
-            if not request.data and 'file' not in request.files:
-                return jsonify({"error": "No file data provided"}), 400
+            if 'file' not in request.files:
+                return jsonify({"error": "No file provided"}), 400
             
-            # Handle multipart form upload
-            if 'file' in request.files:
-                uploaded_file = request.files['file']
-                if uploaded_file.filename == '':
-                    return jsonify({"error": "No file selected"}), 400
-                
-                # Save the uploaded file
-                uploaded_file.save(f"{cfg.persistent_path}/uploaded/{filename}.pdf")
+            uploaded_file = request.files['file']
+            if uploaded_file.filename == '':
+                return jsonify({"error": "No file selected"}), 400
             
-            # Handle raw binary data upload
-            elif request.data:
-                # Save raw PDF data to file
-                file_path = f"{cfg.persistent_path}/uploaded/{filename}.pdf"
-                with open(file_path, 'wb') as f:
-                    f.write(request.data)
+            # Extract additional form data
+            occupancy_and_role = request.form.get('occupacyAndRole', '')
+            last_edu = request.form.get('lastEdu', '')
+            pob = request.form.get('pob', '')  # Place of Birth
+            dob = request.form.get('dob', '')  # Date of Birth
+            name = request.form.get('name', '')  # Name
+            testDate = request.form.get('testDate', '')
             
-            # Process the uploaded file
-            result = upload_roi_handler.handle_upload_roi(filename)
+            # Validate lastEdu enum
+            valid_edu_levels = ['SMA', 'D1', 'D2', 'D3', 'D4', 'S1', 'S2', 'S3', 'Lainnya']
+            if last_edu and last_edu not in valid_edu_levels:
+                return jsonify({"error": f"Invalid lastEdu value. Must be one of: {', '.join(valid_edu_levels)}"}), 400
+            
+            # Validate date format (assuming YYYY-MM-DD format)
+            if dob:
+                try:
+                    from datetime import datetime
+                    datetime.strptime(dob, '%Y-%m-%d')
+                except ValueError:
+                    return jsonify({"error": "Invalid date format for dob. Use YYYY-MM-DD format"}), 400
+            
+            # Save the uploaded file
+            file_path = f"{cfg.persistent_path}/uploaded/{filename}.pdf"
+            uploaded_file.save(file_path)
+            
+            # Prepare additional data to pass to handler
+            additional_data = {
+                'occupacyAndRole': occupancy_and_role,
+                'lastEdu': last_edu,
+                'pob': pob,
+                'dob': dob,
+                'name': name,
+                'testDate': testDate
+            }
+            
+            # Process the uploaded file with additional data
+            result = upload_roi_handler.handle_upload_roi(filename, additional_data=additional_data)
             return jsonify(result), 200
             
         except Exception as e:
