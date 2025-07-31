@@ -277,7 +277,7 @@ class PDFGridCropper:
                         processed_img = cv2.bitwise_not(processed_img)
 
                     # Find digits get bounding rectangle
-                    digit_regions = self.find_digit_regions(processed_img, min_area=0, max_area=5000)
+                    digit_regions = self.find_digit_regions(processed_img, min_area=300, max_area=5000)
                     
                     if not digit_regions:
                         print(f"Column {col_idx}: no digit regions found")
