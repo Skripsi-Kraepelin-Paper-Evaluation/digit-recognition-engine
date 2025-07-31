@@ -90,7 +90,6 @@ class PDFGridCropper:
         try:
             success = cv2.imwrite(filepath, roi)
             if success:
-                print(f"Saved: {filename} (size: {roi.shape[1]}x{roi.shape[0]}, bbox: {bbox})")
                 return filepath
             else:
                 print(f"Failed to save: {filename}")
@@ -140,10 +139,65 @@ class PDFGridCropper:
 
         return digit_regions
 
+    def detect_columns_with_projection(self,image, min_height_ratio=0.1):
+        """
+        Deteksi kolom menggunakan proyeksi horizontal
+        Lebih cepat dan robust untuk layout kolom yang teratur
+        """
+        
+        # Load dan preprocess image
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        
+        # Hitung proyeksi vertikal (sum setiap kolom)
+        vertical_projection = np.sum(binary, axis=0)
+        
+        # Tentukan threshold berdasarkan tinggi gambar
+        height_threshold = binary.shape[0] * min_height_ratio * 255
+        
+        # Cari area yang memiliki konten (nilai proyeksi > threshold)
+        content_areas = vertical_projection > height_threshold
+        
+        # Cari transisi dari False ke True dan True ke False
+        transitions = np.diff(content_areas.astype(int))
+        starts = np.where(transitions == 1)[0] + 1  # Start of content area
+        ends = np.where(transitions == -1)[0] + 1   # End of content area
+        
+        # Handle edge cases
+        if content_areas[0]:
+            starts = np.concatenate([[0], starts])
+        if content_areas[-1]:
+            ends = np.concatenate([ends, [len(content_areas)]])
+        
+        # Buat list koordinat kolom
+        columns = []
+        for start, end in zip(starts, ends):
+            columns.append((int(start), int(end)))
+        
+        return columns
+
+
+    def shift_pairs(self,pairs):
+        """
+        Menggeser pasangan: [(x1,x2),(x3,x4),(x5,x6),...] 
+        menjadi:            [(x2,x3),(x4,x5),(x6,x7),...]
+
+        Parameters:
+            pairs (list of tuple): List berisi pasangan angka.
+
+        Returns:
+            list of tuple: List pasangan hasil pergeseran.
+        """
+        # Ambil semua elemen dalam pairs menjadi satu list
+        flat = [item for pair in pairs for item in pair]
+        
+        # Buat pasangan sliding dari elemen 1 ke n-2
+        result = [(flat[i], flat[i+1]) for i in range(1, len(flat)-2+1, 2)]
+        return result
+
     def crop_roi(self, image_path: str, output_dir: str = "crops",
-                start_x: float = 65, start_y: float = 4588,
+                start_y: float = 4588,
                 width: float = 100, height: float = -4574,
-                x_increment: float = 170,
                 cols: int = 40) -> int:
         """
         CROP ROI using get bounding rectangle algorithm
@@ -169,25 +223,30 @@ class PDFGridCropper:
             img_h, img_w = image.shape[:2]
             
 
-            ##TODO REPLACE THIS WITH DYNAMIC COORDINATE
-            data = [
-                (65, 160), (230, 340), (395, 520), (560, 665), (730, 830),
-                (900, 1000), (1050, 1170), (1220, 1320), (1385, 1485),
-                (1550, 1650), (1720, 1820), (1880, 1990), (2050, 2150),
-                (2210, 2320), (2375, 2480), (2545, 2654), (2705, 2820),
-                (2870, 2985), (3030, 3150), (3195, 3315), (3360, 3470),
-                (3530, 3640), (3690, 3800), (3850, 3965), (4020, 4130),
-                (4175, 4290), (4340, 4460), (4505, 4625), (4670, 4785),
-                (4840, 4950), (5000, 5110), (5165, 5285), (5330, 5450),
-                (5495, 5610), (5660, 5780), (5825, 5940), (5990, 6100),
-                (6150, 6270), (6320, 6440), (6480, 6600)
-            ]
+            top_image = image[:100, :]
+            # cv2.imwrite(f"TOPIMAGE.png", top_image) ## UNCOMMENT TO DEBUG
+            data = self.detect_columns_with_projection(top_image)
+
+            dataShiftPairs = self.shift_pairs(data)
+
+            #### shift coordinate kiri 5 pixel untuk setiap x2 (reduce questions digit noise)
+            N = 15
+            dataShiftPairs = [(xa, max(xb - N, xa)) for (xa, xb) in dataShiftPairs]
+
+            ## append dataShiftPairs terakhir adalah (x2 terakhir dari data, x max image) (khusus answer column terakhir bukan hasil deteksi)
+            if data:
+                last_x = data[-1][1]  # Ambil x2 dari pasangan terakhir
+                if last_x < img_w:
+                    dataShiftPairs.append((last_x, img_w))
+
+            ## preprocess remove right coordinate for tolerance
+
 
             # Process each column
             for col_idx in range(cols):
                 try:
                     # Calculate column coordinates
-                    x1, x2 = data[col_idx]
+                    x1, x2 = dataShiftPairs[col_idx]
                     
                     # Validate coordinates
                     if x1 < 0 or x2 > img_w or y1 < 0 or y2 > img_h:
@@ -195,9 +254,17 @@ class PDFGridCropper:
                         continue
                     
                     # Crop answers columns
-                    answers_columns = image[y1:y2, x1:x2]
+                    x1 = min(x1, img_w)
+                    x2 = min(x2, img_w)
+                    y1 = min(y1, img_h)
+                    y2 = min(y2, img_h)
 
-                    ## UNCOMMENT TO DEBUG cv2.imwrite(f"{col_idx}RAW.png", answers_columns)
+                    # Validasi: hanya crop kalau ukuran valid
+                    if x2 > x1 and y2 > y1:
+                        answers_columns = image[y1:y2, x1:x2]
+                        # cv2.imwrite(f"{col_idx}RAW.png", answers_columns) ##UNCOMMENT TO DEBUG
+                    else:
+                        print(f"[SKIP] Area invalid atau terlalu kecil di col {col_idx}")
                     
                     if answers_columns.size == 0:
                         print(f"Column {col_idx}: empty crop, skipping")
@@ -260,11 +327,9 @@ class PDFGridCropper:
         """
         if grid_config is None:
             grid_config = {
-                'start_x': 65,
                 'start_y': 4588,
                 'width': 100,
                 'height': -4574,
-                'x_increment': 170,
                 'cols': 40
             }
             
@@ -313,11 +378,9 @@ class UploadAndRoIHandler:
         
         # Configure grid parameters
         grid_settings = {
-            'start_x': 65,
             'start_y': 4588,
             'width': 100,
             'height': -4574,
-            'x_increment': 170,
             'cols': 40
         }
         
