@@ -8,3 +8,4 @@ class AppConfig:
         self.row = os.getenv("ROW") or 4
         self.col = os.getenv("COLUMN") or 4
         self.host = os.getenv("COLUMN") or "http://localhost:5000"
+        self.min_accuracy = os.getenv("MIN_ACCURACY") or 0.75

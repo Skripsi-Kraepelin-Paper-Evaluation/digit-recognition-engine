@@ -24,9 +24,10 @@ class InferenceEngine:
         return self._engine.predict_digit(is_answer=is_answer,image_path=image_path, kernel_size=kernel_size, iterations=iterations)
 
 class PredictHandler:
-    def __init__(self, persistent_path='./persistent'):
+    def __init__(self, persistent_path='./persistent',min_accuracy=0.8):
         self.engine = InferenceEngine()
         self.persistent_path = persistent_path
+        self.min_accuracy = min_accuracy
 
     def _create_obj(self, predicted_digit, accuracy, row, col, blank, is_question):
         model_class = answer.PredictedDigitAnswer
@@ -35,7 +36,7 @@ class PredictHandler:
             accuracy=accuracy if not blank else None,
             column=col,
             row=row,
-            need_manual_check=bool(accuracy < 0.8) if not blank else False,
+            need_manual_check=bool(accuracy < self.min_accuracy) if not blank else False,
             checked=False,
             is_blank=blank
         )
@@ -169,7 +170,7 @@ class PredictHandler:
 
 def create_predict_blueprint(inference_engine,cfg):
     InferenceEngine().set_engine(inference_engine)
-    predict_handler = PredictHandler(persistent_path=cfg.persistent_path)
+    predict_handler = PredictHandler(persistent_path=cfg.persistent_path,min_accuracy=cfg.min_accuracy)
     predict_bp = Blueprint('predict_controller', __name__)
 
     @predict_bp.route('/predict', methods=['POST'])

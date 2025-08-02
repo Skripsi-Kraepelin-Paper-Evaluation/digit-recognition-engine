@@ -144,12 +144,12 @@ class KraepelinAnalyzer:
                 skipped += 1
             elif str(answer).lower() == 'x':
                 errors += 1
-            elif answer != expected:
-                errors += 1
-            elif answer == expected:
-                correct += 1
             elif answer == 'BLANK':
                 not_answered += 1
+            elif answer == expected:
+                correct += 1
+            elif answer != expected:
+                errors += 1
             else:
                 not_answered += 1
         total_answered = max_items - skipped

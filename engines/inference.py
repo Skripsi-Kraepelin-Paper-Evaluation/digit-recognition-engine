@@ -59,16 +59,16 @@ class NewDigitsRecogModel:
         imgcv = cv2.resize(imgcv, (28, 28))
         gray = cv2.cvtColor(imgcv, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY_INV)  # Invert: digits become white
-        non_zero = cv2.countNonZero(thresh)
+        # non_zero = cv2.countNonZero(thresh)
         
-        is_blank = False
+        # is_blank = False
 
         
-        if is_answer:
-            if non_zero < self.threshold_answer: 
-                print(f'imagepath {image_path} non_zero {non_zero} min threshold {self.threshold_answer}')
-                is_blank = True
-                return None, is_blank
+        # if is_answer:
+        #     if non_zero < self.threshold_answer: 
+        #         print(f'imagepath {image_path} non_zero {non_zero} min threshold {self.threshold_answer}')
+        #         is_blank = True
+        #         return None, is_blank
         
 
         # Load the image
@@ -113,7 +113,7 @@ class NewDigitsRecogModel:
         # Reshape to match model input: (1, 28, 28, 1)
         final_array = final_array.reshape(1, 28, 28, 1)
 
-        return final_array, is_blank
+        return final_array, False
 
     def predict_digit(self, is_answer ,image_path, **enhancement_kwargs):
         """
