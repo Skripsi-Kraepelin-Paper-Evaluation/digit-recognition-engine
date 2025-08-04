@@ -10,20 +10,39 @@ credit to : https://www.kaggle.com/models/pauljohannesaru/beyond_mnist
 
 ## STRUKTUR KODE
 
-### dataservices
-merepresentasikan kode terkait abstraksi pengelolaan dan pengambilan data
+### configs
+berisi konfigurasi aplikasi dan environment variables
 
 ### controllers
-merepresentasikan kode logic / function business process dari system
+merepresentasikan kode logic / function business process dari system seperti:
+- upload_and_roi.py - upload file dan execute region of interest algorithm
+- predict.py - prediksi digit recognition
+- eval.py - evaluasi hasil kraepelin
+- eval_history.py - riwayat evaluasi
+- preview_history.py - preview hasil digit recognition
+- metadata.py - pengelolaan metadata
+- delete.py - penghapusan data
+- list_files_uploaded.py - daftar file yang diupload
 
 ### models
-merepresentasikan abstraksi objek / entitas untuk mempermudah abstraksi system
+merepresentasikan abstraksi objek / entitas untuk mempermudah abstraksi system:
+- predicted_digit_answer.py - model untuk hasil prediksi digit
 
 ### engines
-merepresentasikan mesin utama dari system seperti inference engine, preprocessing, dan region of interest
+merepresentasikan mesin utama dari system:
+- inference.py - inference engine untuk digit recognition
+- roi.py - region of interest processing
+
+### output_model
+berisi pretrained model CNN (model0.h5)
 
 ### persistent
-direktori aset business process disimpan, seperti upload documents, rekam jejak evaluasi, dan gambar hasil teknik region of interest
+direktori aset business process disimpan:
+- uploaded/ - dokumen yang diupload
+- eval_history/ - rekam jejak evaluasi dan plots
+- preview_history/ - preview hasil evaluasi
+- roi_result/ - hasil region of interest
+- metadata/ - metadata file pdf
 
 ## DISCLAIMER
 
@@ -173,8 +192,9 @@ docker compose up -d
 
 5. Open your browser and try it on
 
-open your favorite browser and open
-http://localhost:8081
+open your favorite browser and open:
+- Frontend: http://localhost (port 80)
+- Backend API: http://localhost:8080
 
 6. Verify the installation
 
@@ -209,8 +229,8 @@ docker compose down -v
 ### Common Issues:
 
 **Port conflicts:**
-- If ports 8080 or 8081 are already in use, modify the `docker-compose.yml` file to use different ports
-- Change the port mapping from `8081:8081` to `[available-port]:8081`
+- If ports 80 or 8080 are already in use, the application may not start properly
+- With host network mode, you need to ensure these ports are available on your host machine
 
 **Docker permission issues (Linux/Mac):**
 ```bash
