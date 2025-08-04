@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  backend:
+    image: 081218068401/kraepelin-backend
+    container_name: kraepelin-backend
+    env_file:
+      - .env
+    volumes:
+      - persistent_data:/app/persistent
+    network_mode: host
+    restart: unless-stopped
+
+  frontend:
+    image: 081218068401/kraepelin-frontend
+    container_name: kraepelin-frontend
+    ports:
+      - "8081:80"
+    volumes:
+      - ./config.js:/usr/share/nginx/html/config.js:ro
+    networks:
+      - kraepelin-network
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+networks:
+  kraepelin-network:
+    driver: bridge
+
+volumes:
+  persistent_data:

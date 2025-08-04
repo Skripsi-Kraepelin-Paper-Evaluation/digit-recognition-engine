@@ -1,10 +1,12 @@
 from flask import Blueprint, jsonify, request
 import os
 import json
+from urllib.parse import urlparse, urlunparse
 
 class EvalHistoryHandler:
-    def __init__(self, persistent_path='./persistent'):
-        self.persistent_path = persistent_path
+    def __init__(self, cfg):
+        self.persistent_path = cfg.persistent_path
+        self.cfg = cfg
 
     def handle_eval_history(self, filename):
 
@@ -25,6 +27,13 @@ class EvalHistoryHandler:
             ## open json from ./persistent/eval_history/{filename.json} parse and return result
             with open(json_path, 'r', encoding='utf-8') as f:
                 result = json.load(f)
+            
+            # Update plotImagePath host if it exists
+            if 'plotImagePath' in result:
+                parsed_url = urlparse(result['plotImagePath'])
+                new_host = urlparse(self.cfg.host)
+                updated_url = parsed_url._replace(netloc=new_host.netloc, scheme=new_host.scheme)
+                result['plotImagePath'] = urlunparse(updated_url)
             
             # Add metadata about the loaded file
             result['loaded_from'] = json_path
@@ -52,7 +61,7 @@ class EvalHistoryHandler:
 
 
 def create_eval_history_blueprint(cfg):
-    eval_history_handler = EvalHistoryHandler(persistent_path=cfg.persistent_path)
+    eval_history_handler = EvalHistoryHandler(cfg)
     eval_history_bp = Blueprint('eval_history_controller', __name__)
 
     @eval_history_bp.route('/eval_history/<filename>', methods=['GET'])
