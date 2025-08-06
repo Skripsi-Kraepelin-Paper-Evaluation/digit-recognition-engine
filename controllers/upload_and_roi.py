@@ -108,7 +108,10 @@ class PDFGridCropper:
         sorted_regions = sorted(regions, key=lambda r: (-r['center_y'], r['bbox'][0]))
         return sorted_regions
 
-    def find_digit_regions(self, processed_img, min_area=50, max_area=5000):
+        avg_center_x = sum([r['bbox'][0] + r['bbox'][2] // 2 for r in digit_regions]) / len(digit_regions)
+        return avg_center_x < center_x_threshold
+
+    def find_digit_regions(self, processed_img, min_area=50, max_area=5000, min_center_x=8):
         """Deteksi region yang mengandung digit menggunakan contour detection"""
         # Apply closing untuk menggabungkan bagian karakter yang terpisah
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
@@ -120,21 +123,23 @@ class PDFGridCropper:
         digit_regions = []
 
         for contour in contours:
-            # Get bounding rectangle
             x, y, w, h = cv2.boundingRect(contour)
             area = w * h
             aspect_ratio = w / h if h > 0 else 0
+            center_x = x + w // 2
 
-            # Filter berdasarkan ukuran dan aspect ratio yang masuk akal untuk digit
+            # Skip jika titik tengah terlalu ke kiri
+            if x == 0 and center_x < min_center_x:
+                continue
+
             if (min_area <= area <= max_area and
                 0.1 <= aspect_ratio <= 2.0 and
-                h >= 10 and w >= 5):  # Minimal size untuk digit
-
+                h >= 10 and w >= 5):
                 digit_regions.append({
                     'bbox': (x, y, w, h),
                     'area': area,
                     'aspect_ratio': aspect_ratio,
-                    'center_y': y + h//2  # Untuk sorting berdasarkan posisi vertikal
+                    'center_y': y + h // 2
                 })
 
         return digit_regions
@@ -198,7 +203,7 @@ class PDFGridCropper:
     def crop_roi(self, image_path: str, output_dir: str = "crops",
                 start_y: float = 4588,
                 width: float = 100, height: float = -4574,
-                cols: int = 40) -> int:
+                cols: int = 40, filename:str = "filename") -> int:
         """
         CROP ROI using get bounding rectangle algorithm
         """
@@ -224,20 +229,23 @@ class PDFGridCropper:
             
 
             top_image = image[:100, :]
-            # cv2.imwrite(f"TOPIMAGE.png", top_image) ## UNCOMMENT TO DEBUG
+            # cv2.imwrite(f"TOPIMAGE_{filename}.png", top_image) ## UNCOMMENT TO DEBUG
             data = self.detect_columns_with_projection(top_image)
 
             dataShiftPairs = self.shift_pairs(data)
-
-            #### shift coordinate kiri 5 pixel untuk setiap x2 (reduce questions digit noise)
-            N = 15
-            dataShiftPairs = [(xa, max(xb - N, xa)) for (xa, xb) in dataShiftPairs]
 
             ## append dataShiftPairs terakhir adalah (x2 terakhir dari data, x max image) (khusus answer column terakhir bukan hasil deteksi)
             if data:
                 last_x = data[-1][1]  # Ambil x2 dari pasangan terakhir
                 if last_x < img_w:
                     dataShiftPairs.append((last_x, img_w))
+
+            #### shift coordinate kiri 15 pixel untuk setiap x2 (reduce questions digit noise)
+            N = 15
+            dataShiftPairs = [(xa, max(xb - N, xa)) for (xa, xb) in dataShiftPairs]
+            #### shift coordinate kanan 2 pixel untuk setiap x1 (reduce questions digit noise)
+            # N2 = 1
+            # dataShiftPairs = [(xa+N, max(xb,xa+N)) for (xa, xb) in dataShiftPairs]
 
             ## preprocess remove right coordinate for tolerance
 
@@ -262,7 +270,7 @@ class PDFGridCropper:
                     # Validasi: hanya crop kalau ukuran valid
                     if x2 > x1 and y2 > y1:
                         answers_columns = image[y1:y2, x1:x2]
-                        # cv2.imwrite(f"{col_idx}RAW.png", answers_columns) ##UNCOMMENT TO DEBUG
+                        # cv2.imwrite(f"{filename}_{col_idx}RAW.png", answers_columns) ##UNCOMMENT TO DEBUG
                     else:
                         print(f"[SKIP] Area invalid atau terlalu kecil di col {col_idx}")
                     
@@ -312,7 +320,7 @@ class PDFGridCropper:
             
     def process_pdf(self, pdf_path: str, output_dir: str = "crops",
                    png_temp: str = "temp_converted.png",
-                   grid_config: dict = None) -> bool:
+                   grid_config: dict = None, filename: str = "filename") -> bool:
         """
         Complete pipeline: PDF conversion and grid cropping.
         
@@ -330,7 +338,8 @@ class PDFGridCropper:
                 'start_y': 4588,
                 'width': 100,
                 'height': -4574,
-                'cols': 40
+                'cols': 40,
+                "filename":filename,
             }
             
         try:
@@ -381,7 +390,8 @@ class UploadAndRoIHandler:
             'start_y': 4588,
             'width': 100,
             'height': -4574,
-            'cols': 40
+            'cols': 40,
+            'filename':filename,
         }
         
         # Process PDF
