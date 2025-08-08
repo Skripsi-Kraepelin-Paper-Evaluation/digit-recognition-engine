@@ -256,21 +256,29 @@ class KraepelinAnalyzer:
         sum_x_squared = sum(x * x for x in x_values)
 
         # Calculate b (slope)
-        denominator = n * sum_x_squared - (sum_x ** 2)
+        denominator = (n * sum_x_squared) - (sum_x ** 2)
         if denominator == 0:
             b = 0
         else:
-            b = (n * sum_xy - sum_x * sum_y) / denominator
+            b = ((n * sum_xy) - (sum_x * sum_y)) / denominator
 
         # Calculate a (intercept)
         mean_y = sum_y / n
         mean_x = sum_x / n
-        a = mean_y - b * mean_x
+        a = mean_y - (b * mean_x)
+
+        # Calculate fin hanker result
+        x40 = a + b * 40  # Example for column 40
+        x0 = a  # Example for column 0
+        ril_hanker = x40 - x0
 
         hanker_result = {
             "a": a,
             "b": b,
-            "equation": f"y = {a:.3f} + {b:.3f}x"
+            "x40": x40,
+            "x0": x0,
+            "ril_hanker": ril_hanker,
+            "equation": f"Hanker = {x40:.3f} - {x0:.3f} = {ril_hanker:.3f}"
         }
 
         self.results["hanker"] = hanker_result
