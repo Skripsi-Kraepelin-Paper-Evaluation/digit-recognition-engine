@@ -268,7 +268,7 @@ class KraepelinAnalyzer:
         a = mean_y - (b * mean_x)
 
         # Calculate fin hanker result
-        x40 = a + b * 40  # Example for column 40
+        x40 = a + (b * 40)  # Example for column 40
         x0 = a  # Example for column 0
         ril_hanker = x40 - x0
 
@@ -371,6 +371,7 @@ class KraepelinAnalyzer:
         plt.ylabel('Correct Answers', fontsize=12)
         plt.grid(True, alpha=0.3)
         plt.xticks(range(1, len(column_correct) + 1, 5))
+        plt.ylim(bottom=0)
 
         # Add trend line (Hanker regression)
         hanker = self.calculate_hanker()
