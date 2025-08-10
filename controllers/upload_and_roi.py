@@ -56,8 +56,10 @@ class PDFGridCropper:
             logger.error(f"PDF conversion failed: {e}")
             return None
 
-    def extract_and_save_roi(self, img, bbox, row_idx, col_idx, padding=5):
-        """Extract ROI dan simpan sebagai gambar terpisah"""
+    def extract_and_save_roi(self, img, region, row_idx, col_idx, padding=5):
+        """Extract ROI dengan threshold yang sesuai dan simpan sebagai gambar terpisah"""
+        bbox = region['bbox']
+        threshold_val = region.get('threshold', 127)
         x, y, w, h = bbox
 
         # Add padding with bounds checking
@@ -75,20 +77,27 @@ class PDFGridCropper:
             print(f"Empty ROI for row{row_idx}col{col_idx}")
             return None
 
+        # Apply threshold menggunakan nilai optimal untuk region ini
+        _, roi_thresh = cv2.threshold(roi, threshold_val, 255, cv2.THRESH_BINARY)
+        
+        # Invert jika background putih
+        if np.mean(roi_thresh) > 127:
+            roi_thresh = cv2.bitwise_not(roi_thresh)
+
         # Resize jika terlalu kecil (opsional untuk konsistensi)
         min_size = 20
-        if roi.shape[0] < min_size or roi.shape[1] < min_size:
-            scale_factor = max(min_size/roi.shape[0], min_size/roi.shape[1])
-            new_width = int(roi.shape[1] * scale_factor)
-            new_height = int(roi.shape[0] * scale_factor)
-            roi = cv2.resize(roi, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
+        if roi_thresh.shape[0] < min_size or roi_thresh.shape[1] < min_size:
+            scale_factor = max(min_size/roi_thresh.shape[0], min_size/roi_thresh.shape[1])
+            new_width = int(roi_thresh.shape[1] * scale_factor)
+            new_height = int(roi_thresh.shape[0] * scale_factor)
+            roi_thresh = cv2.resize(roi_thresh, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
 
         # Save ROI with better filename formatting
         filename = f"row{row_idx}col{col_idx}.png"
         filepath = os.path.join(self.output_dir, filename)
 
         try:
-            success = cv2.imwrite(filepath, roi)
+            success = cv2.imwrite(filepath, roi_thresh)
             if success:
                 return filepath
             else:
@@ -112,10 +121,30 @@ class PDFGridCropper:
         return avg_center_x < center_x_threshold
 
     def find_digit_regions(self, processed_img, min_area=50, max_area=5000, min_center_x=8):
-        """Deteksi region yang mengandung digit menggunakan contour detection"""
+        """Deteksi region yang mengandung digit dengan threshold optimal per region"""
+
+        otsu_threshold, _ = cv2.threshold(processed_img,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        print(f"OTSU THRESHOLD {otsu_threshold}")
+
+        modified_threshold = otsu_threshold
+
+        if otsu_threshold >= 196 and otsu_threshold <= 200:
+            modified_threshold = otsu_threshold * 1.05 
+        elif otsu_threshold >= 201 and otsu_threshold <= 205:
+            modified_threshold = otsu_threshold * 1.10
+        elif otsu_threshold > 206:
+            modified_threshold = otsu_threshold * 1.15
+
+        _, processed_img = cv2.threshold(processed_img, modified_threshold, 255, cv2.THRESH_BINARY)
+
+
+        if np.mean(processed_img) > 127:
+            processed_img = cv2.bitwise_not(processed_img)
+
         # Apply closing untuk menggabungkan bagian karakter yang terpisah
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
         morph_img = cv2.morphologyEx(processed_img, cv2.MORPH_CLOSE, kernel)
+
 
         # Find contours
         contours, _ = cv2.findContours(morph_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -135,11 +164,13 @@ class PDFGridCropper:
             if (min_area <= area <= max_area and
                 0.1 <= aspect_ratio <= 2.0 and
                 h >= 10 and w >= 5):
+                
                 digit_regions.append({
                     'bbox': (x, y, w, h),
                     'area': area,
                     'aspect_ratio': aspect_ratio,
-                    'center_y': y + h // 2
+                    'center_y': y + h // 2,
+                    'threshold': modified_threshold
                 })
 
         return digit_regions
@@ -280,12 +311,13 @@ class PDFGridCropper:
 
                     # Preprocess image
                     grayed_image = cv2.cvtColor(answers_columns, cv2.COLOR_BGR2GRAY)
-                    _, processed_img = cv2.threshold(grayed_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-                    if np.mean(processed_img) > 127:
-                        processed_img = cv2.bitwise_not(processed_img)
+                    grayed_image = cv2.GaussianBlur(grayed_image, (3, 3), 0)
+                    # _, processed_img = cv2.threshold(grayed_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                    # if np.mean(processed_img) > 127:
+                    #     processed_img = cv2.bitwise_not(processed_img)
 
                     # Find digits get bounding rectangle
-                    digit_regions = self.find_digit_regions(processed_img, min_area=300, max_area=5000)
+                    digit_regions = self.find_digit_regions(grayed_image, min_area=300, max_area=5000)
                     
                     if not digit_regions:
                         print(f"Column {col_idx}: no digit regions found")
@@ -296,11 +328,9 @@ class PDFGridCropper:
 
                     # Process each detected region
                     for row_idx, region in enumerate(sorted_regions):
-                        bbox = region['bbox']
-
-                        # Extract dan save ROI
+                        # Extract dan save ROI dengan threshold yang sesuai
                         filepath = self.extract_and_save_roi(
-                            processed_img, bbox, row_idx, col_idx, padding=5
+                            grayed_image, region, row_idx, col_idx, padding=5
                         )
 
                         if filepath:
