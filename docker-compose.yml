@@ -4,11 +4,12 @@ services:
   backend:
     image: 081218068401/kraepelin-backend
     container_name: kraepelin-backend
+    ports:
+      - "8080:8080"
     env_file:
       - .env
     volumes:
       - persistent_data:/app/persistent
-    network_mode: host
     restart: unless-stopped
 
   frontend:
