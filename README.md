@@ -193,8 +193,7 @@ docker compose up -d
 5. Open your browser and try it on
 
 open your favorite browser and open:
-- Frontend: http://localhost (port 80)
-- Backend API: http://localhost:8080
+http://localhost:8081 (port 8081)
 
 6. Verify the installation
 
