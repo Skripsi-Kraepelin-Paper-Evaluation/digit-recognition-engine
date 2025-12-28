@@ -72,8 +72,8 @@ class ExportHandler:
                 break
                 
             col_letter = columns[col_idx]
-            totalRow = 62
-            upperRow = 8
+            totalRow = 57
+            upperRow = 2
             
             # Write answers bottom-up (reverse order)
             for row_idx, answer in enumerate(answer_col):
@@ -85,7 +85,7 @@ class ExportHandler:
                 
                 # Convert answer to appropriate value
                 if answer == 'BLANK' or answer == '' or answer is None:
-                    cell.value = 'BLANK'
+                    cell.value = 'N/A'
                 elif answer == 'SKIPPED':
                     cell.value = 'SKIPPED'
                 else:

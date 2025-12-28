@@ -93,8 +93,8 @@ class ImportHandler:
         # Scan left to right
         for col_idx, col_letter in enumerate(columns):
             column_data = []
-            totalRow = 62
-            upperRow = 8
+            totalRow = 57
+            upperRow = 2
             
             # Scan bottom-up (from row 56 to row 7)
             for row in range(totalRow, upperRow, -1):
