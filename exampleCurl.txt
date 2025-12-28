@@ -103,3 +103,8 @@ curl -X "GET" -H 'Content-Type: application/json' "http://localhost:5000/metadat
   "pob": "Bandung",
   "testDate": "2025-07-16"
 }
+
+# example import
+curl -X "POST" -F file=@./asset/template.xlsx -H 'Content-Type: application/json' "http://localhost:5000/import/test"
+
+# example responses (same like predict)
