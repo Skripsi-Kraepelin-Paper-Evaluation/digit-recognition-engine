@@ -1,6 +1,6 @@
 from configs import config
 from flask import Flask
-from controllers import predict, preview_history, list_files_uploaded, eval_history, upload_and_roi,eval,delete,metadata,importerEngine
+from controllers import predict, preview_history, list_files_uploaded, eval_history, upload_and_roi,eval,delete,metadata,importerEngine,exporterEngine
 from engines import inference
 from flask_cors import CORS
 
@@ -28,6 +28,8 @@ def create_app():
     app.register_blueprint(delete.create_delete_blueprint(cfg))
     app.register_blueprint(metadata.create_metadata_blueprint(cfg))
     app.register_blueprint(importerEngine.create_import_blueprint(cfg))
+    app.register_blueprint(exporterEngine.create_export_blueprint(cfg))
+
 
     return app
 

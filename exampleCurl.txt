@@ -108,3 +108,7 @@ curl -X "GET" -H 'Content-Type: application/json' "http://localhost:5000/metadat
 curl -X "POST" -F file=@./asset/template.xlsx -H 'Content-Type: application/json' "http://localhost:5000/import/test"
 
 # example responses (same like predict)
+
+# example export 
+
+curl -X "POST" -d @payloadEval.json -H 'Content-Type: application/json' "http://localhost:5000/export/filename"
