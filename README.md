@@ -8,6 +8,17 @@ dengan tambahan data augmentation. Setiap sampel training set telah diaugmentasi
 akurasi dari model.
 credit to : https://www.kaggle.com/models/pauljohannesaru/beyond_mnist
 
+## DATABASE INTEGRATION
+Sistem sekarang menggunakan **PostgreSQL** untuk menyimpan semua data:
+- ✅ Metadata project (nama, tanggal lahir, pendidikan, pekerjaan, dll)
+- ✅ Preview history (hasil OCR/digit recognition)
+- ✅ Evaluation history (hasil evaluasi Kraepelin)
+- ✅ Draft history (save as draft - sebelumnya di localStorage browser)
+- ✅ Auto-migration: Tables dibuat otomatis saat aplikasi start
+- ✅ Fallback mechanism: Jika database gagal, sistem akan fallback ke file system
+
+Lihat [DATABASE_MIGRATION.md](DATABASE_MIGRATION.md) untuk detail lengkap.
+
 ## STRUKTUR KODE
 
 ### configs
@@ -15,18 +26,23 @@ berisi konfigurasi aplikasi dan environment variables
 
 ### controllers
 merepresentasikan kode logic / function business process dari system seperti:
-- upload_and_roi.py - upload file dan execute region of interest algorithm
-- predict.py - prediksi digit recognition
-- eval.py - evaluasi hasil kraepelin
-- eval_history.py - riwayat evaluasi
-- preview_history.py - preview hasil digit recognition
-- metadata.py - pengelolaan metadata
-- delete.py - penghapusan data
-- list_files_uploaded.py - daftar file yang diupload
+- upload_and_roi.py - upload file dan execute region of interest algorithm (✅ database integrated)
+- predict.py - prediksi digit recognition (✅ database integrated)
+- eval.py - evaluasi hasil kraepelin (✅ database integrated)
+- eval_history.py - riwayat evaluasi (✅ database integrated)
+- preview_history.py - preview hasil digit recognition (✅ database integrated)
+- metadata.py - pengelolaan metadata (✅ database integrated)
+- delete.py - penghapusan data (✅ database integrated)
+- list_files_uploaded.py - daftar file yang diupload (✅ database integrated)
 
 ### models
 merepresentasikan abstraksi objek / entitas untuk mempermudah abstraksi system:
 - predicted_digit_answer.py - model untuk hasil prediksi digit
+
+### database
+berisi konfigurasi dan models database:
+- models.py - SQLAlchemy models (KraepelinProject, PreviewHistory, EvalHistory)
+- connection.py - Database connection dan auto-migration
 
 ### engines
 merepresentasikan mesin utama dari system:
@@ -37,7 +53,7 @@ merepresentasikan mesin utama dari system:
 berisi pretrained model CNN (model0.h5)
 
 ### persistent
-direktori aset business process disimpan:
+direktori aset business process disimpan (backup/fallback):
 - uploaded/ - dokumen yang diupload
 - eval_history/ - rekam jejak evaluasi dan plots
 - preview_history/ - preview hasil evaluasi

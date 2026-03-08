@@ -61,6 +61,44 @@ class EvalHandler:
             
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump(result, f, indent=2, ensure_ascii=False)
+            
+            # Save to database
+            from database import get_db, EvalHistory
+            db = get_db()
+            try:
+                eval_hist = db.query(EvalHistory).filter_by(filename=filename).first()
+                if eval_hist:
+                    # Update existing
+                    eval_hist.panker = result['panker']
+                    eval_hist.tianker = result['tianker']
+                    eval_hist.janker = result['janker']
+                    eval_hist.jankerv2 = result['jankerv2']
+                    eval_hist.hanker = result['hanker']
+                    eval_hist.accuracy = result['accuracy']
+                    eval_hist.col_score_per_minute = result['colScorePerMinute']
+                    eval_hist.total_correct_ans = result['totalCorrectAns']
+                    eval_hist.plot_image_path = result['plotImagePath']
+                else:
+                    # Create new
+                    eval_hist = EvalHistory(
+                        filename=filename,
+                        panker=result['panker'],
+                        tianker=result['tianker'],
+                        janker=result['janker'],
+                        jankerv2=result['jankerv2'],
+                        hanker=result['hanker'],
+                        accuracy=result['accuracy'],
+                        col_score_per_minute=result['colScorePerMinute'],
+                        total_correct_ans=result['totalCorrectAns'],
+                        plot_image_path=result['plotImagePath']
+                    )
+                    db.add(eval_hist)
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                print(f"Failed to save eval to database: {e}")
+            finally:
+                db.close()
 
             return result
             

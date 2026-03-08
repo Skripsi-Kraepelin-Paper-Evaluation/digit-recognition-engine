@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kraepelin-postgres
+    environment:
+      POSTGRES_DB: kraepelin
+      POSTGRES_USER: kraepelin_user
+      POSTGRES_PASSWORD: kraepelin_pass123
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - kraepelin-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kraepelin_user -d kraepelin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     image: 081218068401/kraepelin-backend
     container_name: kraepelin-backend
@@ -10,7 +30,12 @@ services:
       - .env
     volumes:
       - persistent_data:/app/persistent
+    networks:
+      - kraepelin-network
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   frontend:
     image: 081218068401/kraepelin-frontend
@@ -31,3 +56,4 @@ networks:
 
 volumes:
   persistent_data:
+  postgres_data:

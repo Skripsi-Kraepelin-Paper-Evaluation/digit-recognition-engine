@@ -1,8 +1,9 @@
 from configs import config
 from flask import Flask
-from controllers import predict, preview_history, list_files_uploaded, eval_history, upload_and_roi,eval,delete,metadata,importerEngine,exporterEngine
+from controllers import predict, preview_history, list_files_uploaded, eval_history, upload_and_roi,eval,delete,metadata,importerEngine,exporterEngine,draft
 from engines import inference
 from flask_cors import CORS
+from database import init_db, close_db
 
 
 
@@ -11,6 +12,9 @@ def create_app():
     app = Flask(__name__, static_url_path='/public/persistent',static_folder=cfg.persistent_path)
     CORS(app)
 
+    # Initialize database
+    with app.app_context():
+        init_db(app)
 
     # init inference engine
     inferencer = inference.NewDigitsRecogModel('./output_model/model0.h5',threshold_answer=cfg.threshold_answer)
@@ -29,7 +33,12 @@ def create_app():
     app.register_blueprint(metadata.create_metadata_blueprint(cfg))
     app.register_blueprint(importerEngine.create_import_blueprint(cfg))
     app.register_blueprint(exporterEngine.create_export_blueprint(cfg))
+    app.register_blueprint(draft.create_draft_blueprint(cfg))
 
+    # Cleanup on teardown
+    @app.teardown_appcontext
+    def shutdown_session(exception=None):
+        close_db()
 
     return app
 

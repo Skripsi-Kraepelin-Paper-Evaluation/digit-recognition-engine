@@ -1,13 +1,31 @@
 from flask import Blueprint, jsonify, request
 import os
 import json
+from database import get_db, KraepelinProject
 
 class ListUploadedHandler:
     def __init__(self, persistent_path='./persistent'):
         self.persistent_path = persistent_path
 
     def handle_list_uploaded(self):
-
+        # Try to get from database first
+        db = get_db()
+        try:
+            projects = db.query(KraepelinProject).order_by(KraepelinProject.created_at.desc()).all()
+            if projects:
+                files_without_extensions = [p.filename for p in projects]
+                return {
+                    'success': True,
+                    'total_files': len(files_without_extensions),
+                    'files': files_without_extensions,
+                    'source': 'database'
+                }
+        except Exception as e:
+            print(f"Database query failed: {e}")
+        finally:
+            db.close()
+        
+        # Fallback to file system
         uploaded_dir = f'{self.persistent_path}/uploaded'
     
         # Check if the uploaded directory exists
@@ -40,7 +58,8 @@ class ListUploadedHandler:
             response = {
                 'success': True,
                 'total_files': len(files_only),
-                'files': files_without_extensions
+                'files': files_without_extensions,
+                'source': 'filesystem'
             }
             
         except Exception as e:

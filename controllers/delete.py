@@ -2,6 +2,8 @@ from flask import Blueprint, jsonify, request
 import os
 import json
 import shutil
+from database import get_db, KraepelinProject, PreviewHistory, EvalHistory
+from controllers.draft import DraftHistory
 
 class DeleteHandler:
     def __init__(self, persistent_path='./persistent'):
@@ -20,7 +22,8 @@ class DeleteHandler:
             f"{self.persistent_path}/eval_history/plots/{filename}.png",
             f"{self.persistent_path}/preview_history/{filename}.json",
             f"{self.persistent_path}/metadata/{filename}.json",
-            f"{self.persistent_path}/uploaded/{filename}.pdf"
+            f"{self.persistent_path}/uploaded/{filename}.pdf",
+            f"{self.persistent_path}/draft_history/{filename}.json"
         ]
         
         for target in targets:
@@ -37,6 +40,27 @@ class DeleteHandler:
                     pass
             except Exception as e:
                 errors.append(f"Failed to delete {target}: {str(e)}")
+        
+        # Delete from database
+        db = get_db()
+        try:
+            # Ensure draft table exists
+            from database.connection import get_database_url
+            from sqlalchemy import create_engine
+            engine = create_engine(get_database_url())
+            DraftHistory.__table__.create(engine, checkfirst=True)
+            
+            # Delete from all tables
+            db.query(KraepelinProject).filter_by(filename=filename).delete()
+            db.query(PreviewHistory).filter_by(filename=filename).delete()
+            db.query(EvalHistory).filter_by(filename=filename).delete()
+            db.query(DraftHistory).filter_by(filename=filename).delete()
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            errors.append(f"Failed to delete from database: {str(e)}")
+        finally:
+            db.close()
         
         # Return result
         result = {

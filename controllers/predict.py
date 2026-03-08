@@ -122,6 +122,34 @@ class PredictHandler:
         
         # Add the saved path to the result for reference
         result['saved_path'] = json_path
+        
+        # Save to database
+        from database import get_db, PreviewHistory
+        db = get_db()
+        try:
+            preview = db.query(PreviewHistory).filter_by(filename=filename).first()
+            if preview:
+                # Update existing
+                preview.questions = result['questions']
+                preview.answers = result['answers']
+                preview.total_questions = result['total_questions']
+                preview.total_answers = result['total_answers']
+            else:
+                # Create new
+                preview = PreviewHistory(
+                    filename=filename,
+                    questions=result['questions'],
+                    answers=result['answers'],
+                    total_questions=result['total_questions'],
+                    total_answers=result['total_answers']
+                )
+                db.add(preview)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            print(f"Failed to save preview to database: {e}")
+        finally:
+            db.close()
 
         #####################################
 

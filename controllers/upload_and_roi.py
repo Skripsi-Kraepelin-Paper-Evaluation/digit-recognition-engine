@@ -439,6 +439,38 @@ class UploadAndRoIHandler:
             metadata_path = f"{metadata_dir}/{filename}.json"
             with open(metadata_path, 'w', encoding='utf-8') as f:
                 json.dump(additional_data, f, ensure_ascii=False, indent=2)
+            
+            # Save to database
+            from database import get_db, KraepelinProject
+            db = get_db()
+            try:
+                project = db.query(KraepelinProject).filter_by(filename=filename).first()
+                if project:
+                    # Update existing
+                    project.name = additional_data.get('name', '')
+                    project.occupacy_and_role = additional_data.get('occupacyAndRole', '')
+                    project.last_edu = additional_data.get('lastEdu', '')
+                    project.pob = additional_data.get('pob', '')
+                    project.dob = additional_data.get('dob', '')
+                    project.test_date = additional_data.get('testDate', '')
+                else:
+                    # Create new
+                    project = KraepelinProject(
+                        filename=filename,
+                        name=additional_data.get('name', ''),
+                        occupacy_and_role=additional_data.get('occupacyAndRole', ''),
+                        last_edu=additional_data.get('lastEdu', ''),
+                        pob=additional_data.get('pob', ''),
+                        dob=additional_data.get('dob', ''),
+                        test_date=additional_data.get('testDate', '')
+                    )
+                    db.add(project)
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                logger.error(f"Failed to save metadata to database: {e}")
+            finally:
+                db.close()
 
         return {
             "message":success

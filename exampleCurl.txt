@@ -1,5 +1,5 @@
 # example request eval
-curl -X "POST" -d @payloadEval.json -H 'Content-Type: application/json' "http://localhost:5000/eval"
+curl -X "POST" -d @payloadEval.json -H 'Content-Type: application/json' "http://localhost:8080/eval"
 
 # example eval response
 {
@@ -13,9 +13,10 @@ curl -X "POST" -d @payloadEval.json -H 'Content-Type: application/json' "http://
   "totalCorrectAns": "2200",
   "plotImagePath": "localhost:8080/public/persistent/eval_history/plots/samsul.png"
 }
+# Note: Data will be saved to both database and file system
 
 # example request eval history
-curl -X "GET" -H 'Content-Type: application/json' "http://localhost:5000/eval_history/samsul"
+curl -X "GET" -H 'Content-Type: application/json' "http://localhost:8080/eval_history/samsul"
 
 # example eval history response
 {
@@ -25,15 +26,16 @@ curl -X "GET" -H 'Content-Type: application/json' "http://localhost:5000/eval_hi
   "janker": "0",
   "jankerv2": "0.000",
   "loaded_at": 1753109232.22711,
-  "loaded_from": "./persistent/eval_history/samsul.json",
+  "loaded_from": "database",
   "panker": "55.000",
   "tianker": "0",
   "totalCorrectAns": "2200",
   "plotImagePath": "localhost:8080/public/persistent/eval_history/plots/samsul.png"
 }
+# Note: Data is fetched from database first, falls back to file system if not found
 
 # example request list all uploaded files
-curl -X "GET" -H 'Content-Type: application/json' "http://localhost:5000/list_uploaded"
+curl -X "GET" -H 'Content-Type: application/json' "http://localhost:8080/list_uploaded"
 
 # example list all uploaded files response
 {
@@ -41,30 +43,35 @@ curl -X "GET" -H 'Content-Type: application/json' "http://localhost:5000/list_up
     "samsul"
   ],
   "success": true,
-  "total_files": 1
+  "total_files": 1,
+  "source": "database"
 }
+# Note: Data is fetched from database first, falls back to file system if not found
 
 
 # example upload and roi
-curl -X "POST" -F "file=@samsul.pdf" -H 'Content-Type: application/pdf' "http://localhost:5000/upload_roi/samsul"
+curl -X "POST" -F "file=@samsul.pdf" -H 'Content-Type: application/pdf' "http://localhost:8080/upload_roi/samsul"
 
 # example upload and roi response
 {
   "message": true
 }
+# Note: Metadata will be saved to both database and file system
 
 
 # example request preview history
-curl -X "GET" -H 'Content-Type: application/json' "http://localhost:5000/preview_history/samsul"
+curl -X "GET" -H 'Content-Type: application/json' "http://localhost:8080/preview_history/samsul"
+# Note: Data is fetched from database first, falls back to file system if not found
 
 # example request predict
-curl -X "POST" -d '{"filename":"samsul"}' -H 'Content-Type: application/json' "http://localhost:5000/predict"
+curl -X "POST" -d '{"filename":"samsul"}' -H 'Content-Type: application/json' "http://localhost:8080/predict"
+# Note: Results will be saved to both database and file system
 
 
 # example request upload
 
 export PDF_FILE="example.pdf" \
-export BASE_URL="http://localhost:5000" \ 
+export BASE_URL="http://localhost:8080" \ 
 export FILENAME="example" \
 export OCCUPACY_AND_ROLE="Software Engineer" \
 export LAST_EDU="S1"  \
@@ -83,32 +90,63 @@ curl -X POST \
   -F "testDate=${TESTDATE}" \
   "${BASE_URL}/upload_roi/${FILENAME}" \
   -v
+# Note: Metadata will be saved to both database and file system
 
 
 # example delete request
 
-curl -X DELETE "http://localhost:5000/example" -H "Content-Type: application/json" -v
+curl -X DELETE "http://localhost:8080/example" -H "Content-Type: application/json" -v
+# Note: Data will be deleted from both database and file system
 
 # example request metadata
-curl -X "GET" -H 'Content-Type: application/json' "http://localhost:5000/metadata/example"
+curl -X "GET" -H 'Content-Type: application/json' "http://localhost:8080/metadata/example"
 
 # example response metadata
 {
   "dob": "2025-07-29",
   "lastEdu": "D1",
   "loaded_at": 1753803291.0866067,
-  "loaded_from": "./persistent/metadata/Patrick_Star_2025-07-29.json",
+  "loaded_from": "database",
   "name": "Patrick Star",
   "occupacyAndRole": "Software Developer",
   "pob": "Bandung",
   "testDate": "2025-07-16"
 }
+# Note: Data is fetched from database first, falls back to file system if not found
 
 # example import
-curl -X "POST" -F file=@./asset/template.xlsx -H 'Content-Type: application/json' "http://localhost:5000/import/test"
+curl -X "POST" -F file=@./asset/template.xlsx -H 'Content-Type: application/json' "http://localhost:8080/import/test"
 
 # example responses (same like predict)
 
 # example export 
 
-curl -X "POST" -d @payloadEval.json -H 'Content-Type: application/json' "http://localhost:5000/export/filename"
+curl -X "POST" -d @payloadEval.json -H 'Content-Type: application/json' "http://localhost:8080/export/filename"
+
+# example save draft
+curl -X "POST" -d '{"timestamp":"2025-01-01T10:00:00Z","filename":"test","metadata":{},"answers":[],"questions":[],"editedCells":[]}' -H 'Content-Type: application/json' "http://localhost:8080/draft/test"
+
+# example load draft
+curl -X "GET" -H 'Content-Type: application/json' "http://localhost:8080/draft/test"
+
+# example load draft response
+{
+  "success": true,
+  "data": {
+    "timestamp": "2025-01-01T10:00:00Z",
+    "filename": "test",
+    "metadata": {},
+    "answers": [],
+    "questions": [],
+    "editedCells": []
+  },
+  "loaded_from": "database",
+  "loaded_at": 1735732800.0
+}
+
+# DATABASE NOTES:
+# - All data is now stored in PostgreSQL database
+# - File system is used as backup/fallback
+# - Database tables are auto-created on first run
+# - Draft data is now stored in database instead of browser localStorage
+# - See DATABASE_MIGRATION.md for more details
